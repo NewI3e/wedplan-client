@@ -6,9 +6,20 @@ const client = new MongoClient("mongodb://localhost:27017/database");
 const db = client.db("wedplandb");
 
 export const auth = betterAuth({
-    //...other options
     emailAndPassword: {
         enabled: true,
+        // The sign-up form tells people 6+, so keep the server in sync.
+        minPasswordLength: 6,
+    },
+    user: {
+        additionalFields: {
+            role: {
+                type: "string",
+                required: false,
+                defaultValue: "customer",
+                input: true,
+            },
+        },
     },
     baseURL: process.env.BETTER_AUTH_URL,
     socialProviders: {

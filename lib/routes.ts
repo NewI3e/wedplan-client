@@ -7,9 +7,12 @@ export const routes = {
   services: "/services",
   signIn: "/sign-in",
   signUp: "/sign-up",
+  forgotPassword: "/forgot-password",
   dashboard: "/dashboard",
   profile: "/profile",
   listBusiness: "/list-your-business",
+  terms: "/terms",
+  privacy: "/privacy",
 } as const
 
 export type NavItem = {
