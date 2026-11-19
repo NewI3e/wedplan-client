@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
       <p className="mt-3 text-muted-foreground">
-        How WedPlan handles your data will be explained here.
+        How WedPlan handles  data will be explained here.
       </p>
     </main>
   )
