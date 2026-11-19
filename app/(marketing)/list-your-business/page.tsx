@@ -11,7 +11,7 @@ export default function ListBusinessPage() {
         List Your Business
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        Vendor onboarding and listing plans go here.
+        Vendor onboarding 
       </p>
     </main>
   )

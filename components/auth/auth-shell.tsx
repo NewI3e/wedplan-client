@@ -21,44 +21,54 @@ export function AuthShell({
 }: AuthShellProps) {
   return (
     <div className="grid min-h-svh bg-[#f8f4ec] lg:grid-cols-2">
-      <aside className="relative hidden overflow-hidden bg-[#2b2118] lg:sticky lg:top-0 lg:block lg:h-svh lg:self-start">
-        <Image
-          src={imageSrc}
-          alt={imageAlt}
-          fill
-          priority
-          sizes="50vw"
-          className="object-cover"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/30"
-        />
-        {/* Keeps the logo readable on lighter photos. */}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-black/55 to-transparent"
-        />
+      <aside className="hidden lg:sticky lg:top-0 lg:block lg:h-svh lg:self-start">
+        {/* `relative` here gives next/image `fill` a positioned parent. */}
+        <div className="relative h-full overflow-hidden bg-[#2b2118]">
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            fill
+            priority
+            sizes="50vw"
+            className="object-cover"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/30"
+          />
+          {/* Keeps the logo readable on lighter photos. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-black/55 to-transparent"
+          />
 
-        <div className="relative flex h-full flex-col justify-between p-10 xl:p-12">
-          <Link
-            href={routes.home}
-            className="flex w-fit items-baseline gap-0.5"
-            aria-label="WedPlan home"
-          >
-            <span className="font-display text-2xl font-semibold tracking-tight text-[#f8f2e7]">
-              WedPlan
-            </span>
-            <span aria-hidden className="mb-2.5 text-[0.55rem] text-gold">
-              ✦
-            </span>
-          </Link>
+          <div className="relative flex h-full flex-col justify-between p-10 xl:p-12">
+            <Link
+              href={routes.home}
+              className="flex w-fit items-baseline gap-0.5"
+              aria-label="WedPlan home"
+            >
+              <span className="font-display text-2xl font-semibold tracking-tight text-[#f8f2e7]">
+                WedPlan
+              </span>
+              <span aria-hidden className="mb-2.5 text-[0.55rem] text-gold">
+                ✦
+              </span>
+            </Link>
 
-          <div>
-            <blockquote className="max-w-md font-display text-3xl leading-[1.25] text-[#f8f2e7] xl:text-[2.1rem]">
-              “{quote}”
-            </blockquote>
-      
+            <div>
+              <blockquote className="max-w-md font-display text-3xl leading-[1.25] text-[#f8f2e7] xl:text-[2.1rem]">
+                “{quote}”
+              </blockquote>
+              <Link
+                href={routes.home}
+                className="mt-5 inline-flex items-center gap-2 text-xs font-medium text-white/75 transition-colors hover:text-white"
+              >
+                <CirclePlayIcon aria-hidden className="size-4" />
+                Preview as:{" "}
+                <span className="underline underline-offset-2">Visitor</span>
+              </Link>
+            </div>
           </div>
         </div>
       </aside>

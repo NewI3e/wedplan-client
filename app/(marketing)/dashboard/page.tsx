@@ -11,8 +11,7 @@ export default function DashboardPage() {
         Dashboard
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        The signed-in landing page. Protect this route with a layout or
-        middleware check.
+        The signed-in landing page.
       </p>
     </main>
   )
