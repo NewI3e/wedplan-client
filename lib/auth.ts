@@ -1,35 +1,54 @@
-import { betterAuth } from "better-auth";
-import { MongoClient } from "mongodb";
-import { mongodbAdapter } from "@better-auth/mongo-adapter";
+import { betterAuth } from "better-auth"
+import { MongoClient } from "mongodb"
+import { mongodbAdapter } from "@better-auth/mongo-adapter"
 
-
-const client = new MongoClient(process.env.DB_URI as string);
-const db = client.db("wedplandb");
+const client = new MongoClient(process.env.DB_URI as string)
+const db = client.db("wedplandb")
 
 export const auth = betterAuth({
-    emailAndPassword: {
-        enabled: true,
-        // The sign-up form tells people 6+, so keep the server in sync.
-        minPasswordLength: 6,
+  emailAndPassword: {
+    enabled: true,
+    // The sign-up form tells people 6+, so keep the server in sync.
+    minPasswordLength: 6,
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        required: false,
+        defaultValue: "customer",
+        input: true,
+      },
     },
+  },
+  databaseHooks: {
     user: {
-        additionalFields: {
-            role: {
-                type: "string",
-                required: false,
-                defaultValue: "customer",
-                input: true,
-            },
+      create: {
+        before: async (user) => {
+          // Never let a client register itself as an admin.
+          // Admins are promoted directly in the database.
+          const role = user.role === "vendor" ? "vendor" : "customer"
+          return { data: { ...user, role } }
         },
-    },
-    baseURL: process.env.BETTER_AUTH_URL,
-    socialProviders: {
-        google: {
-            clientId: process.env.GOOGLE_CLIENT_ID as string,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      },
+      update: {
+        before: async (user) => {
+          // Profile updates may not change roles either.
+          const data: Record<string, unknown> = { ...user }
+          delete data.role
+          return { data }
         },
+      },
     },
-    database: mongodbAdapter(db, {
-        client,
-    }),
-});
+  },
+  baseURL: process.env.BETTER_AUTH_URL,
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
+  database: mongodbAdapter(db, {
+    client,
+  }),
+})

@@ -164,6 +164,17 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Dashboard shell owns the full viewport now that the site header is gone. */
+.dashboard-shell {
+    --sidebar: #f7f2e9;
+    --sidebar-foreground: #2b2118;
+    --sidebar-accent: #efe6d6;
+    --sidebar-accent-foreground: #2b2118;
+    --sidebar-border: #e8decd;
+    --sidebar-ring: #7a1f3d;
+    min-height: 100svh;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
