@@ -15,6 +15,8 @@ import {
 import { dashboardPaths } from "@/lib/dashboard"
 import { cn } from "@/lib/utils"
 
+import { useSession } from "@/lib/auth-client"
+
 const CATEGORIES = [
   "Photography",
   "Venue",
@@ -218,6 +220,10 @@ function SelectField({
 }
 
 export function AddServiceForm() {
+  const { data: session, isPending } = useSession()
+
+  const vendorEmail = session?.user?.email
+
   const [values, setValues] = React.useState(initialValues)
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [photoUrl, setPhotoUrl] = React.useState<string | null>(null)
@@ -292,48 +298,72 @@ export function AddServiceForm() {
 
   const [submitError, setSubmitError] = React.useState<string | null>(null)
 
-async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-  event.preventDefault()
-  if (status !== "idle") return
 
-  const nextErrors = validate(values)
-  setErrors(nextErrors)
-  if (Object.keys(nextErrors).length > 0) return
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
 
-  setStatus("submitting")
-  setSubmitError(null)
+    if (status !== "idle") return
 
-  // Remove trailing slashes so "http://localhost:5000/" doesn't become "//services".
-  const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
-
-  try {
-    const res = await fetch(`${apiUrl}/services`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: values.name.trim(),
-        category: values.category,
-        location: values.location,
-        price: Number(values.price),
-        description: values.description.trim(),
-      }),
-    })
-
-    if (!res.ok) {
-      const body = await res.text()
-      console.error("Status:", res.status, "Body:", body)
-      throw new Error(`Request failed: ${res.status}`)
+    if (isPending) {
+      setSubmitError("Please wait while your account is loading.")
+      return
     }
 
-    const result = await res.json()
-    console.log("Inserted:", result)
-    setStatus("submitted")
-  } catch (error) {
-    console.error(error)
-    setSubmitError("Could not submit your service. Please try again.")
-    setStatus("idle")
+    if (!vendorEmail) {
+      setSubmitError("Please sign in before adding a service.")
+      return
+    }
+
+    const nextErrors = validate(values)
+
+    setErrors(nextErrors)
+
+    if (Object.keys(nextErrors).length > 0) return
+
+    setStatus("submitting")
+    setSubmitError(null)
+
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
+
+    try {
+      const res = await fetch(`${apiUrl}/services`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: values.name.trim(),
+          category: values.category,
+          location: values.location,
+          price: Number(values.price),
+          description: values.description.trim(),
+          vendorEmail: vendorEmail,
+          photoUrl: null,
+        }),
+      })
+
+      if (!res.ok) {
+        const body = await res.text()
+
+        console.error("Status:", res.status, "Body:", body)
+
+        throw new Error(`Request failed: ${res.status}`)
+      }
+
+      const result = await res.json()
+
+      console.log("Service created:", result)
+
+      setStatus("submitted")
+    } catch (error) {
+      console.error("Service submission error:", error)
+
+      setSubmitError("Could not submit your service. Please try again.")
+
+      setStatus("idle")
+    }
   }
-}
+
 
   return (
     <div className="w-full min-w-0 space-y-4 sm:space-y-6">

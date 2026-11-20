@@ -1,11 +1,10 @@
+
 "use client"
-import { toast } from "sonner"
+
 import * as React from "react"
-import Link from "next/link"
+import { useSession } from "@/lib/auth-client"
+import { toast } from "sonner"
 import {
-    CircleAlertIcon,
-    CirclePlusIcon,
-    CrownIcon,
     ImageIcon,
     LoaderCircleIcon,
     MapPinIcon,
@@ -14,17 +13,9 @@ import {
     XIcon,
 } from "lucide-react"
 
-import { dashboardPaths } from "@/lib/dashboard"
 import { cn } from "@/lib/utils"
 
-// Remove trailing slashes so "http://localhost:5000/" never becomes "//services".
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
-
-// TODO: read this from the vendor's real subscription instead of a constant.
-const PLAN_LIMIT = 3
-const NEW_SERVICE_HREF = "/dashboard/vendor/services/new"
-
-type ServiceStatus = "pending" | "approved" | "rejected"
+type ServiceStatus = "pending" | "approved" | "rejected" | string
 
 type Service = {
     _id: string
@@ -38,725 +29,633 @@ type Service = {
     available?: boolean
 }
 
-type EditValues = {
-    name: string
-    price: number
-    description: string
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
+
+const emptyForm = {
+    name: "",
+    category: "",
+    location: "",
+    price: "",
+    description: "",
+    photoUrl: "",
 }
 
-const priceFormatter = new Intl.NumberFormat("en-BD")
+export function VendorServicesList() {
+    // Get logged-in user session
+    const { data: session, isPending } = useSession()
 
-const inputClasses =
-    "h-11 w-full min-w-0 rounded-lg border border-[#ddd2c2] bg-white px-3.5 text-base text-[#2b2118] outline-none transition-colors placeholder:text-[#2b2118]/35 focus:border-[#7a1f3d] focus:ring-3 focus:ring-[#7a1f3d]/15 aria-invalid:border-red-400 aria-invalid:ring-red-200/60 sm:text-sm"
+    const vendorEmail = session?.user?.email
 
-const iconButtonClasses =
-    "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#e8decd] bg-white text-[#2b2118]/70 transition-colors hover:bg-[#faf4ea] hover:text-[#2b2118] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/25 focus-visible:outline-none"
-
-async function request(path: string, init?: RequestInit) {
-    const res = await fetch(`${API_URL}${path}`, {
-        ...init,
-        headers: { "Content-Type": "application/json", ...init?.headers },
-    })
-
-    if (!res.ok) {
-        const body = await res.text()
-        console.error("Status:", res.status, "Body:", body)
-        throw new Error(`Request failed: ${res.status}`)
-    }
-
-    return res
-}
-
-const isActive = (service: Service) => service.available !== false
-
-/* ------------------------------------------------------------------ */
-/* Small building blocks                                               */
-/* ------------------------------------------------------------------ */
-
-function StatusBadge({ status }: { status: ServiceStatus }) {
-    const styles: Record<ServiceStatus, string> = {
-        approved: "bg-[#e6f2ea] text-[#3f7a52]",
-        pending: "bg-[#f8efdd] text-[#8a6a1f]",
-        rejected: "bg-red-50 text-red-600",
-    }
-    const labels: Record<ServiceStatus, string> = {
-        approved: "Approved",
-        pending: "Pending",
-        rejected: "Rejected",
-    }
-
-    return (
-        <span
-            className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
-                styles[status]
-            )}
-        >
-            <span aria-hidden className="size-1.5 rounded-full bg-current" />
-            {labels[status]}
-        </span>
-    )
-}
-
-function Switch({
-    checked,
-    disabled,
-    label,
-    onChange,
-}: {
-    checked: boolean
-    disabled?: boolean
-    label: string
-    onChange: () => void
-}) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            aria-label={label}
-            disabled={disabled}
-            onClick={onChange}
-            className={cn(
-                "relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/25 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-                checked ? "bg-[#7a1f3d]" : "bg-[#ddd2c2]"
-            )}
-        >
-            <span
-                aria-hidden
-                className={cn(
-                    "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform",
-                    checked && "translate-x-5"
-                )}
-            />
-        </button>
-    )
-}
-
-// Native <dialog>: focus trap, Escape to close and backdrop come for free.
-function Modal({
-    open,
-    onClose,
-    title,
-    description,
-    children,
-}: {
-    open: boolean
-    onClose: () => void
-    title: string
-    description?: string
-    children: React.ReactNode
-}) {
-    const ref = React.useRef<HTMLDialogElement>(null)
-
-    React.useEffect(() => {
-        const dialog = ref.current
-        if (!dialog) return
-        if (open && !dialog.open) dialog.showModal()
-        if (!open && dialog.open) dialog.close()
-    }, [open])
-
-    return (
-        <dialog
-            ref={ref}
-            onClose={onClose}
-            onClick={(event) => {
-                // Only a click on the backdrop itself closes it.
-                if (event.target === event.currentTarget) onClose()
-            }}
-            className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-[#e8decd] bg-[#fbf8f3] p-0 text-[#2b2118] shadow-xl backdrop:bg-black/50"
-        >
-            {open ? (
-                <div className="relative p-5 sm:p-6">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Close"
-                        className="absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-full text-[#2b2118]/60 transition-colors hover:bg-[#2b2118]/5 focus-visible:ring-2 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none"
-                    >
-                        <XIcon aria-hidden className="size-4" />
-                    </button>
-
-                    <h2 className="font-display pr-8 text-xl font-medium sm:text-2xl">
-                        {title}
-                    </h2>
-                    {description ? (
-                        <p className="mt-1.5 text-sm text-[#2b2118]/65">{description}</p>
-                    ) : null}
-
-                    <div className="mt-5">{children}</div>
-                </div>
-            ) : null}
-        </dialog>
-    )
-}
-
-function EditServiceForm({
-    service,
-    saving,
-    error,
-    onCancel,
-    onSave,
-}: {
-    service: Service
-    saving: boolean
-    error: string | null
-    onCancel: () => void
-    onSave: (values: EditValues) => void
-}) {
-    const [name, setName] = React.useState(service.name)
-    const [price, setPrice] = React.useState(String(service.price))
-    const [description, setDescription] = React.useState(service.description)
-    const [errors, setErrors] = React.useState<
-        Partial<Record<keyof EditValues, string>>
-    >({})
-
-    function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault()
-        if (saving) return
-
-        const nextErrors: typeof errors = {}
-        const priceNumber = Number(price)
-
-        if (!name.trim()) nextErrors.name = "Give your service a name."
-        if (!price.trim() || !Number.isFinite(priceNumber) || priceNumber <= 0) {
-            nextErrors.price = "Use a price greater than 0."
-        }
-        if (!description.trim()) {
-            nextErrors.description = "Tell customers what's included."
-        }
-
-        setErrors(nextErrors)
-        if (Object.keys(nextErrors).length > 0) return
-
-        onSave({
-            name: name.trim(),
-            price: priceNumber,
-            description: description.trim(),
-        })
-    }
-
-    return (
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            <div className="space-y-1.5">
-                <label
-                    htmlFor="edit-name"
-                    className="block text-sm font-medium text-[#2b2118]"
-                >
-                    Service name
-                </label>
-                <input
-                    id="edit-name"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    aria-invalid={Boolean(errors.name)}
-                    className={inputClasses}
-                />
-                {errors.name ? (
-                    <p className="text-xs text-red-600">{errors.name}</p>
-                ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-                <label
-                    htmlFor="edit-price"
-                    className="block text-sm font-medium text-[#2b2118]"
-                >
-                    Price (৳)
-                </label>
-                <input
-                    id="edit-price"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    step={100}
-                    value={price}
-                    onChange={(event) => setPrice(event.target.value)}
-                    aria-invalid={Boolean(errors.price)}
-                    className={inputClasses}
-                />
-                {errors.price ? (
-                    <p className="text-xs text-red-600">{errors.price}</p>
-                ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-                <label
-                    htmlFor="edit-description"
-                    className="block text-sm font-medium text-[#2b2118]"
-                >
-                    Description
-                </label>
-                <textarea
-                    id="edit-description"
-                    rows={4}
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    aria-invalid={Boolean(errors.description)}
-                    className={cn(inputClasses, "h-auto resize-y py-3 leading-relaxed")}
-                />
-                {errors.description ? (
-                    <p className="text-xs text-red-600">{errors.description}</p>
-                ) : null}
-            </div>
-
-            {error ? (
-                <p role="alert" className="text-xs text-red-600">
-                    {error}
-                </p>
-            ) : null}
-
-            <div className="flex justify-end gap-2.5 pt-1">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="inline-flex h-10 items-center justify-center rounded-lg border border-[#e8decd] bg-white px-4 text-sm font-medium text-[#2b2118] transition-colors hover:bg-[#faf4ea] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/25 focus-visible:outline-none"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="submit"
-                    disabled={saving}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#7a1f3d] px-4 text-sm font-medium text-[#f8f2e7] transition-colors hover:bg-[#671a33] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                    {saving ? (
-                        <LoaderCircleIcon aria-hidden className="size-4 animate-spin" />
-                    ) : null}
-                    {saving ? "Saving..." : "Save changes"}
-                </button>
-            </div>
-        </form>
-    )
-}
-
-function ServiceRow({
-    service,
-    onToggle,
-    onEdit,
-    onDelete,
-}: {
-    service: Service
-    onToggle: () => void
-    onEdit: () => void
-    onDelete: () => void
-}) {
-    const active = isActive(service)
-
-    return (
-        <li className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5">
-            <div className="flex min-w-0 items-start gap-4">
-                <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-[#f1e9dc]">
-                    {service.photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                            src={service.photoUrl}
-                            alt=""
-                            className="size-full object-cover"
-                        />
-                    ) : (
-                        <span className="flex size-full items-center justify-center text-[#b08a3e]">
-                            <ImageIcon aria-hidden className="size-6" />
-                        </span>
-                    )}
-                </div>
-
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                        <h3 className="font-display text-lg leading-tight font-medium text-[#2b2118] sm:text-xl">
-                            {service.name}
-                        </h3>
-                        <StatusBadge status={service.status} />
-                    </div>
-
-                    <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#2b2118]/60">
-                        <span>{service.category}</span>
-                        <span className="inline-flex items-center gap-1">
-                            <MapPinIcon aria-hidden className="size-3.5" />
-                            {service.location}
-                        </span>
-                        <span className="font-medium text-[#2b2118]">
-                            ৳{priceFormatter.format(service.price)}
-                        </span>
-                    </p>
-
-                    {service.status === "pending" ? (
-                        <p className="mt-1 text-xs text-[#2b2118]/55">
-                            Waiting for admin review — not visible to customers yet.
-                        </p>
-                    ) : null}
-                    {service.status === "rejected" ? (
-                        <p className="mt-1 text-xs text-red-600">
-                            Rejected by admin — hidden from customers. Edit and resubmit.
-                        </p>
-                    ) : null}
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4">
-                <div className="flex items-center gap-2.5">
-                    <Switch
-                        checked={active}
-                        disabled={service.status === "rejected"}
-                        label={`${active ? "Pause" : "Activate"} ${service.name}`}
-                        onChange={onToggle}
-                    />
-                    <span className="min-w-[4.25rem] text-sm text-[#2b2118]/65">
-                        {active ? "Available" : "Paused"}
-                    </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={onEdit}
-                        aria-label={`Edit ${service.name}`}
-                        className={iconButtonClasses}
-                    >
-                        <PencilIcon aria-hidden className="size-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onDelete}
-                        aria-label={`Delete ${service.name}`}
-                        className={cn(
-                            iconButtonClasses,
-                            "border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
-                        )}
-                    >
-                        <Trash2Icon aria-hidden className="size-4" />
-                    </button>
-                </div>
-            </div>
-        </li>
-    )
-}
-
-function ListSkeleton() {
-    return (
-        <ul
-            aria-busy
-            aria-label="Loading services"
-            className="divide-y divide-[#eee4d5]"
-        >
-            {[0, 1, 2].map((item) => (
-                <li key={item} className="flex animate-pulse items-center gap-4 p-5">
-                    <div className="size-16 shrink-0 rounded-lg bg-[#f1e9dc]" />
-                    <div className="flex-1 space-y-2.5">
-                        <div className="h-4 w-1/2 rounded bg-[#f1e9dc]" />
-                        <div className="h-3 w-1/3 rounded bg-[#f1e9dc]" />
-                    </div>
-                </li>
-            ))}
-        </ul>
-    )
-}
-
-/* ------------------------------------------------------------------ */
-/* Main component                                                      */
-/* ------------------------------------------------------------------ */
-
-export function VendorServicesList({ vendorEmail }: { vendorEmail?: string }) {
     const [services, setServices] = React.useState<Service[] | null>(null)
     const [loadError, setLoadError] = React.useState<string | null>(null)
-    const [actionError, setActionError] = React.useState<string | null>(null)
     const [reloadKey, setReloadKey] = React.useState(0)
 
-    const [editing, setEditing] = React.useState<Service | null>(null)
-    const [deleting, setDeleting] = React.useState<Service | null>(null)
+    const [editingService, setEditingService] = React.useState<Service | null>(null)
+    const [deletingService, setDeletingService] = React.useState<Service | null>(null)
+
+    const [form, setForm] = React.useState(emptyForm)
     const [saving, setSaving] = React.useState(false)
-    const [dialogError, setDialogError] = React.useState<string | null>(null)
+    const [updatingId, setUpdatingId] = React.useState<string | null>(null)
+    const [deleting, setDeleting] = React.useState(false)
 
+    // Fetch services belonging to the logged-in vendor
     React.useEffect(() => {
-        const controller = new AbortController()
-        const query = vendorEmail
-            ? `?email=${encodeURIComponent(vendorEmail)}`
-            : ""
+        if (isPending || !vendorEmail || !API_URL) {
+            return
+        }
 
-        fetch(`${API_URL}/services`, {
+        const controller = new AbortController()
+
+        const query = `?email=${encodeURIComponent(vendorEmail.trim().toLowerCase())}`
+
+        console.log("Fetching services for:", vendorEmail)
+
+        fetch(`${API_URL}/My-services${query}`, {
             signal: controller.signal,
             cache: "no-store",
         })
             .then(async (res) => {
                 if (!res.ok) {
-                    console.error("Status:", res.status, "Body:", await res.text())
+                    const body = await res.text()
+
+                    console.error("API Error:", res.status, body)
+
                     throw new Error(`Request failed: ${res.status}`)
                 }
+
                 return (await res.json()) as Service[]
             })
-            .then(setServices)
+            .then((data) => {
+                console.log("Services received:", data)
+
+                setServices(Array.isArray(data) ? data : [])
+                setLoadError(null)
+            })
             .catch((error: unknown) => {
-                if (error instanceof DOMException && error.name === "AbortError") return
-                console.error(error)
-                setLoadError("Could not load your services.")
+                if (
+                    error instanceof DOMException &&
+                    error.name === "AbortError"
+                ) {
+                    return
+                }
+
+                console.error("Failed to load services:", error)
+                setLoadError("Could not load your services. Please try again.")
             })
 
         return () => controller.abort()
-    }, [vendorEmail, reloadKey])
+    }, [vendorEmail, reloadKey, isPending])
 
-    function retry() {
-        setServices(null)
-        setLoadError(null)
-        setReloadKey((key) => key + 1)
+    // Open edit modal
+    const handleEdit = (service: Service) => {
+        setEditingService(service)
+
+        setForm({
+            name: service.name ?? "",
+            category: service.category ?? "",
+            location: service.location ?? "",
+            price: String(service.price ?? ""),
+            description: service.description ?? "",
+            photoUrl: service.photoUrl ?? "",
+        })
     }
 
-    function patchLocal(id: string, changes: Partial<Service>) {
-        setServices((current) =>
-            current
-                ? current.map((item) =>
-                    item._id === id ? { ...item, ...changes } : item
-                )
-                : current
-        )
-    }
+    // Update service details
+    const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
 
-    const activeCount = services?.filter(isActive).length ?? 0
-    const atLimit = activeCount >= PLAN_LIMIT
+        if (!editingService) return
 
-    async function toggleAvailable(service: Service) {
-        const nextActive = !isActive(service)
-        setActionError(null)
-
-        if (nextActive && atLimit) {
-            setActionError(
-                `The Free plan allows ${PLAN_LIMIT} active services. Upgrade to activate more.`
-            )
+        if (
+            !form.name.trim() ||
+            !form.category.trim() ||
+            !form.location.trim()
+        ) {
+            toast.error("Please fill in all required fields.")
             return
         }
 
-        // Optimistic update, rolled back if the server says no.
-        patchLocal(service._id, { available: nextActive })
-        try {
-            await request(`/services/${service._id}`, {
-                method: "PATCH",
-                body: JSON.stringify({ available: nextActive }),
-            })
-        } catch (error) {
-            console.error(error)
-            patchLocal(service._id, { available: !nextActive })
-            setActionError("Could not update availability. Please try again.")
-        }
-    }
+        const price = Number(form.price)
 
-    async function saveEdit(values: EditValues) {
-        if (!editing) return
+        if (!Number.isFinite(price) || price < 0) {
+            toast.error("Please enter a valid price.")
+            return
+        }
 
         setSaving(true)
-        setDialogError(null)
 
         try {
-            await request(`/services/${editing._id}`, {
-                method: "PATCH",
-                body: JSON.stringify(values),
-            })
-
-            // Update the UI immediately without refreshing
-            patchLocal(editing._id, values)
-
-            setEditing(null)
-        } catch (error) {
-            console.error(error)
-            setDialogError("Could not save your changes. Please try again.")
-        } finally {
-            setSaving(false)
-        }
-    }
-
-
-    async function confirmDelete() {
-        if (!deleting) return
-
-        setSaving(true)
-        setDialogError(null)
-
-        const toastId = toast.loading("Deleting service...")
-
-        try {
-            await request(`/services/${deleting._id}`, {
-                method: "DELETE",
-            })
-
-            const id = deleting._id
-
-            setServices((current) =>
-                current ? current.filter((item) => item._id !== id) : current
+            const res = await fetch(
+                `${API_URL}/services/${editingService._id}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        name: form.name.trim(),
+                        category: form.category.trim(),
+                        location: form.location.trim(),
+                        price,
+                        description: form.description.trim(),
+                        photoUrl: form.photoUrl.trim() || null,
+                    }),
+                }
             )
 
-            setDeleting(null)
+            if (!res.ok) {
+                throw new Error("Failed to update service")
+            }
 
-            toast.success("Service deleted successfully!", {
-                id: toastId,
-            })
+            toast.success("Service updated successfully!")
+
+            setEditingService(null)
+            setForm(emptyForm)
+            setReloadKey((prev) => prev + 1)
         } catch (error) {
             console.error(error)
-
-            toast.error("Could not delete this service. Please try again.", {
-                id: toastId,
-            })
+            toast.error("Could not update service.")
         } finally {
             setSaving(false)
         }
     }
 
+    // Toggle service availability
+    const handleAvailability = async (service: Service) => {
+        const nextAvailable = !(service.available ?? true)
 
-    function openEdit(service: Service) {
-        setDialogError(null)
-        setEditing(service)
+        setUpdatingId(service._id)
+
+        try {
+            const res = await fetch(
+                `${API_URL}/services/${service._id}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        available: nextAvailable,
+                    }),
+                }
+            )
+
+            if (!res.ok) {
+                throw new Error("Failed to update availability")
+            }
+
+            setServices((prev) =>
+                prev?.map((item) =>
+                    item._id === service._id
+                        ? { ...item, available: nextAvailable }
+                        : item
+                ) ?? []
+            )
+
+            toast.success(
+                nextAvailable
+                    ? "Service is now available."
+                    : "Service is now unavailable."
+            )
+        } catch (error) {
+            console.error(error)
+            toast.error("Could not update availability.")
+        } finally {
+            setUpdatingId(null)
+        }
     }
 
-    function openDelete(service: Service) {
-        setDialogError(null)
-        setDeleting(service)
+    // Delete service
+    const handleDelete = async () => {
+        if (!deletingService) return
+
+        setDeleting(true)
+
+        try {
+            const res = await fetch(
+                `${API_URL}/services/${deletingService._id}`,
+                {
+                    method: "DELETE",
+                }
+            )
+
+            if (!res.ok) {
+                throw new Error("Failed to delete service")
+            }
+
+            toast.success("Service deleted successfully!")
+
+            setDeletingService(null)
+            setReloadKey((prev) => prev + 1)
+        } catch (error) {
+            console.error(error)
+            toast.error("Could not delete service.")
+        } finally {
+            setDeleting(false)
+        }
+    }
+
+    // Wait for Better Auth session
+    if (isPending) {
+        return (
+            <div className="flex min-h-60 items-center justify-center">
+                <LoaderCircleIcon className="h-7 w-7 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    // Check logged-in user
+    if (!vendorEmail) {
+        return (
+            <div className="rounded-xl border p-6 text-center">
+                <h3 className="font-semibold">Please sign in</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    You need to sign in to view your services.
+                </p>
+            </div>
+        )
+    }
+
+    // Check API URL
+    if (!API_URL) {
+        return (
+            <div className="rounded-xl border border-destructive/30 p-6 text-center">
+                <p className="text-sm text-destructive">
+                    API URL is missing. Please check your environment variables.
+                </p>
+            </div>
+        )
+    }
+
+    // Loading services
+    if (services === null && !loadError) {
+        return (
+            <div className="flex min-h-60 items-center justify-center">
+                <LoaderCircleIcon className="h-7 w-7 animate-spin text-primary" />
+            </div>
+        )
     }
 
     return (
-        <div className="w-full min-w-0 space-y-4 sm:space-y-5">
+        <div className="space-y-6">
+            {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[#2b2118]/65">
-                    {services
-                        ? `${activeCount} of ${PLAN_LIMIT} active services used on the Free plan`
-                        : "Loading your services..."}
+                <div>
+                    <h2 className="text-xl font-semibold text-foreground">
+                        My Services
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Manage the services you offer to customers.
+                    </p>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                    {services?.length ?? 0} services
                 </p>
-                <Link
-                    href={NEW_SERVICE_HREF}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#7a1f3d] px-5 text-sm font-medium text-[#f8f2e7] transition-colors hover:bg-[#671a33] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none sm:w-auto"
-                >
-                    <CirclePlusIcon aria-hidden className="size-4" />
-                    Add service
-                </Link>
             </div>
 
-            {services && atLimit ? (
-                <div className="flex flex-col gap-3 rounded-xl border border-[#e6cda2] bg-gradient-to-r from-[#f8efdd] via-[#f3e3c6] to-[#e9cfa3] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
-                    <p className="flex items-start gap-3 text-sm leading-relaxed text-[#5b4425] sm:items-center">
-                        <CrownIcon
-                            aria-hidden
-                            className="mt-0.5 size-5 shrink-0 text-[#7a5a22] sm:mt-0"
-                        />
-                        <span className="min-w-0">
-                            You&apos;ve reached the Free plan limit. New or paused services
-                            can&apos;t go live until you upgrade.
-                        </span>
-                    </p>
-                    <Link
-                        href={dashboardPaths.vendor.subscription}
-                        className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-full bg-[#7a1f3d] px-5 text-xs font-medium text-[#f8f2e7] transition-colors hover:bg-[#671a33] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none sm:h-9 sm:w-auto"
+            {/* Error */}
+            {loadError && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+                    <p className="text-sm text-destructive">{loadError}</p>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setLoadError(null)
+                            setServices(null)
+                            setReloadKey((prev) => prev + 1)
+                        }}
+                        className="mt-3 text-sm font-medium text-destructive underline"
                     >
-                        See Premium
-                    </Link>
+                        Try again
+                    </button>
                 </div>
-            ) : null}
+            )}
 
-            {actionError ? (
-                <p
-                    role="alert"
-                    className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700"
-                >
-                    <CircleAlertIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
-                    {actionError}
-                </p>
-            ) : null}
+            {/* Empty state */}
+            {!loadError && services?.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center">
+                    <div className="mb-4 rounded-full bg-muted p-4">
+                        <ImageIcon className="h-7 w-7 text-muted-foreground" />
+                    </div>
 
-            <section className="overflow-hidden rounded-xl border border-[#e8decd] bg-white shadow-sm">
-                {loadError ? (
-                    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-                        <p className="text-sm text-[#2b2118]/70">{loadError}</p>
-                        <button
-                            type="button"
-                            onClick={retry}
-                            className="inline-flex h-10 items-center justify-center rounded-lg border border-[#e8decd] bg-white px-4 text-sm font-medium text-[#2b2118] transition-colors hover:bg-[#faf4ea] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/25 focus-visible:outline-none"
-                        >
-                            Try again
-                        </button>
-                    </div>
-                ) : services === null ? (
-                    <ListSkeleton />
-                ) : services.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-                        <h3 className="font-display text-xl font-medium text-[#2b2118]">
-                            No services yet
-                        </h3>
-                        <p className="max-w-sm text-sm text-[#2b2118]/65">
-                            Add your first service and it will appear on Browse Services once
-                            our team approves it.
-                        </p>
-                        <Link
-                            href={NEW_SERVICE_HREF}
-                            className="mt-1 inline-flex h-10 items-center justify-center rounded-lg bg-[#7a1f3d] px-5 text-sm font-medium text-[#f8f2e7] transition-colors hover:bg-[#671a33] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none"
-                        >
-                            Add service
-                        </Link>
-                    </div>
-                ) : (
-                    <ul className="divide-y divide-[#eee4d5]">
-                        {services.map((service) => (
-                            <ServiceRow
+                    <h3 className="text-lg font-semibold">
+                        No services found
+                    </h3>
+
+                    <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                        You have not added any services yet. Add your first
+                        service to get started.
+                    </p>
+                </div>
+            )}
+
+            {/* Services list */}
+            {!loadError && services && services.length > 0 && (
+                <div className="grid gap-4">
+                    {services.map((service) => {
+                        const isAvailable = service.available ?? true
+                        const isUpdating = updatingId === service._id
+
+                        return (
+                            <div
                                 key={service._id}
-                                service={service}
-                                onToggle={() => toggleAvailable(service)}
-                                onEdit={() => openEdit(service)}
-                                onDelete={() => openDelete(service)}
-                            />
-                        ))}
-                    </ul>
-                )}
-            </section>
+                                className="overflow-hidden rounded-2xl border bg-card"
+                            >
+                                <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+                                    {/* Service image */}
+                                    <div className="h-24 w-full shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
+                                        {service.photoUrl ? (
+                                            <img
+                                                src={service.photoUrl}
+                                                alt={service.name}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center">
+                                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                            </div>
+                                        )}
+                                    </div>
 
-            <Modal
-                open={editing !== null}
-                onClose={() => setEditing(null)}
-                title="Edit service"
-                description={
-                    editing?.status === "approved"
-                        ? "Changes to an approved service go live right away."
-                        : editing?.status === "rejected"
-                            ? "Saving sends this service back to our team for review."
-                            : "Your service is still waiting for review."
-                }
-            >
-                {editing ? (
-                    <EditServiceForm
-                        key={editing._id}
-                        service={editing}
-                        saving={saving}
-                        error={dialogError}
-                        onCancel={() => setEditing(null)}
-                        onSave={saveEdit}
-                    />
-                ) : null}
-            </Modal>
+                                    {/* Service information */}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="font-semibold text-foreground">
+                                                {service.name}
+                                            </h3>
 
-            <Modal
-                open={deleting !== null}
-                onClose={() => setDeleting(null)}
-                title={deleting ? `Delete “${deleting.name}”?` : "Delete service?"}
-                description="This removes the service and its photos. Existing booking requests stay in your history."
-            >
-                {dialogError ? (
-                    <p role="alert" className="mb-3 text-xs text-red-600">
-                        {dialogError}
-                    </p>
-                ) : null}
-                <div className="flex justify-end gap-2.5">
-                    <button
-                        type="button"
-                        onClick={() => setDeleting(null)}
-                        className="inline-flex h-10 items-center justify-center rounded-lg border border-[#e8decd] bg-white px-4 text-sm font-medium text-[#2b2118] transition-colors hover:bg-[#faf4ea] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/25 focus-visible:outline-none"
-                    >
-                        Keep it
-                    </button>
-                    <button
-                        type="button"
-                        onClick={confirmDelete}
-                        disabled={saving}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:ring-3 focus-visible:ring-red-300 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                        {saving ? (
-                            <LoaderCircleIcon aria-hidden className="size-4 animate-spin" />
-                        ) : null}
-                        {saving ? "Deleting..." : "Delete service"}
-                    </button>
+                                            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium capitalize text-muted-foreground">
+                                                {service.status}
+                                            </span>
+                                        </div>
+
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            {service.category}
+                                        </p>
+
+                                        <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                            <span className="flex items-center gap-1">
+                                                <MapPinIcon className="h-4 w-4" />
+                                                {service.location}
+                                            </span>
+
+                                            <span className="font-semibold text-foreground">
+                                                ৳{service.price}
+                                            </span>
+                                        </div>
+
+                                        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                                            {service.description}
+                                        </p>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                        <button
+                                            type="button"
+                                            disabled={isUpdating}
+                                            onClick={() =>
+                                                handleAvailability(service)
+                                            }
+                                            className={cn(
+                                                "rounded-lg px-3 py-2 text-xs font-medium transition disabled:opacity-50",
+                                                isAvailable
+                                                    ? "bg-green-500/10 text-green-700 hover:bg-green-500/20"
+                                                    : "bg-muted text-muted-foreground hover:bg-muted/70"
+                                            )}
+                                        >
+                                            {isUpdating
+                                                ? "Updating..."
+                                                : isAvailable
+                                                    ? "Available"
+                                                    : "Unavailable"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleEdit(service)}
+                                            className="rounded-lg border p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                            aria-label="Edit service"
+                                        >
+                                            <PencilIcon className="h-4 w-4" />
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setDeletingService(service)
+                                            }
+                                            className="rounded-lg border p-2 text-destructive transition hover:bg-destructive/10"
+                                            aria-label="Delete service"
+                                        >
+                                            <Trash2Icon className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
                 </div>
-            </Modal>
+            )}
+
+            {/* Edit modal */}
+            {editingService && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+                    <div className="my-auto w-full max-w-lg rounded-2xl border bg-background p-5 shadow-xl">
+                        <div className="mb-5 flex items-center justify-between">
+                            <h3 className="text-lg font-semibold">
+                                Edit Service
+                            </h3>
+
+                            <button
+                                type="button"
+                                onClick={() => setEditingService(null)}
+                                className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+                            >
+                                <XIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdate} className="space-y-4">
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium">
+                                    Service Name
+                                </label>
+                                <input
+                                    required
+                                    value={form.name}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            name: e.target.value,
+                                        })
+                                    }
+                                    className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">
+                                        Category
+                                    </label>
+                                    <input
+                                        required
+                                        value={form.category}
+                                        onChange={(e) =>
+                                            setForm({
+                                                ...form,
+                                                category: e.target.value,
+                                            })
+                                        }
+                                        className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">
+                                        Price (৳)
+                                    </label>
+                                    <input
+                                        required
+                                        type="number"
+                                        min="0"
+                                        value={form.price}
+                                        onChange={(e) =>
+                                            setForm({
+                                                ...form,
+                                                price: e.target.value,
+                                            })
+                                        }
+                                        className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium">
+                                    Location
+                                </label>
+                                <input
+                                    required
+                                    value={form.location}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            location: e.target.value,
+                                        })
+                                    }
+                                    className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium">
+                                    Photo URL
+                                </label>
+                                <input
+                                    type="url"
+                                    value={form.photoUrl}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            photoUrl: e.target.value,
+                                        })
+                                    }
+                                    className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium">
+                                    Description
+                                </label>
+                                <textarea
+                                    rows={4}
+                                    value={form.description}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            description: e.target.value,
+                                        })
+                                    }
+                                    className="w-full resize-none rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setEditingService(null)
+                                        setForm(emptyForm)
+                                    }}
+                                    className="rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-muted"
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                                >
+                                    {saving && (
+                                        <LoaderCircleIcon className="h-4 w-4 animate-spin" />
+                                    )}
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete confirmation */}
+            {deletingService && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-2xl border bg-background p-6 shadow-xl">
+                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                            <Trash2Icon className="h-6 w-6 text-destructive" />
+                        </div>
+
+                        <h3 className="text-lg font-semibold">
+                            Delete this service?
+                        </h3>
+
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            Are you sure you want to delete{" "}
+                            <strong>{deletingService.name}</strong>? This
+                            action cannot be undone.
+                        </p>
+
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                disabled={deleting}
+                                onClick={() => setDeletingService(null)}
+                                className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={deleting}
+                                onClick={handleDelete}
+                                className="flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                            >
+                                {deleting && (
+                                    <LoaderCircleIcon className="h-4 w-4 animate-spin" />
+                                )}
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
