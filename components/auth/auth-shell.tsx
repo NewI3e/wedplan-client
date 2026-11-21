@@ -60,14 +60,7 @@ export function AuthShell({
               <blockquote className="max-w-md font-display text-3xl leading-[1.25] text-[#f8f2e7] xl:text-[2.1rem]">
                 “{quote}”
               </blockquote>
-              <Link
-                href={routes.home}
-                className="mt-5 inline-flex items-center gap-2 text-xs font-medium text-white/75 transition-colors hover:text-white"
-              >
-                <CirclePlayIcon aria-hidden className="size-4" />
-                Preview as:{" "}
-                <span className="underline underline-offset-2">Visitor</span>
-              </Link>
+
             </div>
           </div>
         </div>

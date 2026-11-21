@@ -19,6 +19,13 @@ export const auth = betterAuth({
         defaultValue: "customer",
         input: true,
       },
+      // Editable from the profile settings page.
+      phone: { type: "string", required: false, input: true },
+      city: { type: "string", required: false, input: true },
+      bio: { type: "string", required: false, input: true },
+      businessName: { type: "string", required: false, input: true },
+      website: { type: "string", required: false, input: true },
+      weddingDate: { type: "string", required: false, input: true },
     },
   },
   databaseHooks: {

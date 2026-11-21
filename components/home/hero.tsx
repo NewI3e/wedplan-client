@@ -71,8 +71,8 @@ export function Hero() {
             className="mt-6 max-w-xl text-base leading-relaxed text-white/80 motion-safe:animate-hero-rise sm:text-lg"
             style={{ animationDelay: "460ms" }}
           >
-            Discover photographers, venues, florists and stylists — compare
-            them side by side and request bookings in minutes.
+            Discover photographers, venues, florists and stylists — compare them
+            side by side and request bookings in minutes.
           </p>
 
           <div
@@ -104,7 +104,10 @@ export function Hero() {
             className="mt-10 flex w-full max-w-2xl items-center gap-2 rounded-full bg-[#f9f4ea]/95 p-1.5 pl-4 shadow-xl shadow-black/20 backdrop-blur transition-shadow focus-within:shadow-2xl motion-safe:animate-hero-rise sm:mt-14 sm:p-2 sm:pl-5"
             style={{ animationDelay: "680ms" }}
           >
-            <SearchIcon aria-hidden className="size-4 shrink-0 text-[#5c5145]" />
+            <SearchIcon
+              aria-hidden
+              className="size-4 shrink-0 text-[#5c5145]"
+            />
             <label htmlFor="hero-search" className="sr-only">
               Search photographers, venues and more
             </label>

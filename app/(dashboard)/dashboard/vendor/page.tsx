@@ -7,7 +7,10 @@ import { VendorOverview } from "@/components/dashboard/vendor/vendor-overview"
 import { requireDashboardRole } from "@/lib/auth-server"
 import { dashboardPaths } from "@/lib/dashboard"
 import { getVendorBookings } from "@/lib/vendor-bookings"
-import { getVendorServices } from "@/lib/vendor-overview"
+import {
+  getVendorServiceUsage,
+  getVendorServices,
+} from "@/lib/vendor-overview"
 
 export const metadata: Metadata = {
   title: "Vendor Overview",
@@ -21,6 +24,11 @@ export default async function VendorDashboardPage() {
     getVendorBookings(vendorEmail),
     getVendorServices(vendorEmail),
   ])
+
+  const usage = await getVendorServiceUsage(
+    vendorEmail,
+    servicesResult.services
+  )
 
   const vendorName = session.user.name?.trim()
 
@@ -42,6 +50,7 @@ export default async function VendorDashboardPage() {
       <VendorOverview
         bookings={bookingsResult.bookings}
         services={servicesResult.services}
+        usage={usage}
         loadError={bookingsResult.error ?? servicesResult.error}
       />
     </DashboardPage>

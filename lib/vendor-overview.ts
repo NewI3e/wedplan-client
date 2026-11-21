@@ -87,3 +87,72 @@ export async function getVendorServices(
     }
   }
 }
+
+export type VendorServiceUsage = {
+  plan: string
+  /** `null` means unlimited (premium). */
+  limit: number | null
+  used: number
+  remaining: number | null
+  canCreate: boolean
+}
+
+/** Local fallback when the usage endpoint can't be reached. */
+export function usageFromServices(
+  services: VendorService[]
+): VendorServiceUsage {
+  const used = services.filter((service) => service.status !== "rejected").length
+
+  return {
+    plan: "free",
+    limit: FREE_SERVICE_LIMIT,
+    used,
+    remaining: Math.max(0, FREE_SERVICE_LIMIT - used),
+    canCreate: used < FREE_SERVICE_LIMIT,
+  }
+}
+
+/**
+ * Loads the vendor's plan and how many services they have used.
+ * `email` must come from the Better Auth session on the server.
+ */
+export async function getVendorServiceUsage(
+  email: string,
+  services: VendorService[] = []
+): Promise<VendorServiceUsage> {
+  const vendorEmail = email.trim().toLowerCase()
+
+  if (!vendorEmail) return usageFromServices(services)
+
+  try {
+    const payload = await fetchJson(
+      `${BOOKINGS_API_URL}/services/usage?vendorEmail=${encodeURIComponent(
+        vendorEmail
+      )}`
+    )
+
+    if (!payload || typeof payload !== "object") {
+      throw new Error("Invalid service usage response")
+    }
+
+    const usage = payload as Record<string, unknown>
+    const used = Number(usage.used)
+
+    return {
+      plan: asString(usage.plan) || "free",
+      limit:
+        usage.limit === null || usage.limit === undefined
+          ? null
+          : Number(usage.limit),
+      used: Number.isFinite(used) ? used : 0,
+      remaining:
+        usage.remaining === null || usage.remaining === undefined
+          ? null
+          : Number(usage.remaining),
+      canCreate: usage.canCreate !== false,
+    }
+  } catch (error) {
+    console.error("Failed to load vendor service usage:", error)
+    return usageFromServices(services)
+  }
+}

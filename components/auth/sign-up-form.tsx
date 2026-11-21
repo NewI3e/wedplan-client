@@ -14,7 +14,10 @@ import {
   XIcon,
 } from "lucide-react"
 
-import { signIn, signUp } from "@/lib/auth-client"
+import { toast } from "sonner"
+
+import { authClient, signIn, signUp } from "@/lib/auth-client"
+import { uploadImage } from "@/lib/upload-image"
 import { routes } from "@/lib/routes"
 
 type Role = "customer" | "vendor"
@@ -44,6 +47,8 @@ const roles: {
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024
 
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
 export function SignUpForm() {
   const router = useRouter()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -55,6 +60,7 @@ export function SignUpForm() {
   const [password, setPassword] = React.useState("")
   const [showPassword, setShowPassword] = React.useState(false)
   const [photoUrl, setPhotoUrl] = React.useState<string | null>(null)
+  const [photoFile, setPhotoFile] = React.useState<File | null>(null)
   const [photoError, setPhotoError] = React.useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false)
@@ -76,8 +82,8 @@ export function SignUpForm() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith("image/")) {
-      setPhotoError("Please choose an image file.")
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setPhotoError("Please choose a JPG, PNG or WebP image.")
       return
     }
 
@@ -90,6 +96,7 @@ export function SignUpForm() {
     const url = URL.createObjectURL(file)
     objectUrlRef.current = url
     setPhotoUrl(url)
+    setPhotoFile(file)
     setPhotoError(null)
   }
 
@@ -97,6 +104,7 @@ export function SignUpForm() {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
     objectUrlRef.current = null
     setPhotoUrl(null)
+    setPhotoFile(null)
     setPhotoError(null)
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
@@ -130,6 +138,22 @@ export function SignUpForm() {
             "We couldn't create your account. Please try again."
         )
         return
+      }
+
+      // The account exists now, so the user is signed in and can upload.
+      if (photoFile) {
+        try {
+          const image = await uploadImage(photoFile, "/api/profile-photo")
+          const { error: photoSaveError } = await authClient.updateUser({
+            image,
+          })
+
+          if (photoSaveError) throw new Error(photoSaveError.message)
+        } catch {
+          toast.error(
+            "Your account was created, but the photo couldn't be uploaded. You can add it from Settings."
+          )
+        }
       }
 
       router.push(routes.dashboard)
@@ -235,7 +259,14 @@ export function SignUpForm() {
 
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
-            <span className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-dashed border-[#c9bcaa] bg-white/60 text-[#2b2118]/45">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label={
+                photoUrl ? "Change profile photo" : "Add a profile photo"
+              }
+              className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-dashed border-[#c9bcaa] bg-white/60 text-[#2b2118]/45 transition-colors hover:border-[#7a1f3d]/60 hover:text-[#7a1f3d] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/15 focus-visible:outline-none"
+            >
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -246,7 +277,7 @@ export function SignUpForm() {
               ) : (
                 <ImagePlusIcon aria-hidden className="size-5" />
               )}
-            </span>
+            </button>
             {photoUrl ? (
               <button
                 type="button"
@@ -268,7 +299,7 @@ export function SignUpForm() {
               {photoUrl ? "Change photo" : "Add a profile photo"}
             </button>
             <p className="mt-0.5 text-xs text-[#2b2118]/50">
-              Optional. JPG or PNG, up to 4 MB.
+              Optional. JPG, PNG or WebP, up to 4 MB.
             </p>
             {photoError ? (
               <p className="mt-0.5 text-xs text-red-600">{photoError}</p>
@@ -279,7 +310,11 @@ export function SignUpForm() {
             ref={fileInputRef}
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            onChange={handlePhotoChange}
+            onChange={(event) => {
+              handlePhotoChange(event)
+              // Reset so choosing the same file again still fires onChange.
+              event.target.value = ""
+            }}
             className="sr-only"
           />
         </div>

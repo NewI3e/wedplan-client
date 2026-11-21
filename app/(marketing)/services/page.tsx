@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 
 import {
@@ -51,6 +51,50 @@ type Service = {
 };
 
 export default function ServicesPage() {
+  return (
+    <Suspense fallback={<ServicesPageFallback />}>
+      <ServicesPageContent />
+    </Suspense>
+  );
+}
+
+function ServicesPageFallback() {
+  return (
+    <main className="min-h-screen bg-[#fbf7ef]">
+      <section className="border-b border-[#e8decd] bg-[#faeee7]">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-5 sm:py-14 md:py-20">
+          <div className="h-4 w-32 animate-pulse rounded bg-[#ead9cb]" />
+          <div className="mt-4 h-10 w-72 max-w-full animate-pulse rounded bg-[#ead9cb]" />
+          <div className="mt-8 h-20 animate-pulse rounded-2xl bg-[#f2e3d6]" />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ServicesPageContent() {
+  const searchParams = useSearchParams();
+
+  const initialCategory = searchParams.get("category") ?? "All";
+  const initialSearch = searchParams.get("q") ?? "";
+
+  // Remount when the URL params change so state resets without an effect.
+  return (
+    <ServicesBrowser
+      key={JSON.stringify([initialCategory, initialSearch])}
+      initialCategory={initialCategory}
+      initialSearch={initialSearch}
+    />
+  );
+}
+
+function ServicesBrowser({
+  initialCategory,
+  initialSearch,
+}: {
+  initialCategory: string;
+  initialSearch: string;
+}) {
   const router = useRouter();
 
   const { data: session, isPending: authLoading } = useSession();
@@ -60,8 +104,8 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState(initialSearch);
+  const [category, setCategory] = useState(initialCategory);
   const [location, setLocation] = useState("All");
 
   const [error, setError] = useState("");
@@ -126,9 +170,10 @@ export default function ServicesPage() {
   // Search and filters
   const filteredServices = useMemo(() => {
     return approvedServices.filter((service) => {
-      const matchesSearch = service.name
+      const matchesSearch = [service.name, service.category, service.location, service.description]
+        .join(" ")
         .toLowerCase()
-        .includes(search.toLowerCase());
+        .includes(search.trim().toLowerCase());
 
       const matchesCategory =
         category === "All" ||

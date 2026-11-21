@@ -21,7 +21,7 @@ import {
   formatBookingDate,
 } from "@/components/dashboard/booking-display"
 import type { VendorBooking } from "@/lib/vendor-bookings"
-import { FREE_SERVICE_LIMIT, type VendorService } from "@/lib/vendor-overview"
+import type { VendorService, VendorServiceUsage } from "@/lib/vendor-overview"
 import { dashboardPaths } from "@/lib/dashboard"
 import { cn } from "@/lib/utils"
 
@@ -139,10 +139,12 @@ function StatCard({
 export function VendorOverview({
   bookings,
   services,
+  usage,
   loadError,
 }: {
   bookings: VendorBooking[]
   services: VendorService[]
+  usage: VendorServiceUsage
   loadError: string | null
 }) {
   if (loadError) {
@@ -180,11 +182,13 @@ export function VendorOverview({
   const latestBookings = bookings.slice(0, 4)
   const months = getMonthBuckets(bookings)
   const maxMonthCount = Math.max(1, ...months.map((month) => month.count))
-  const atServiceLimit = activeServices >= FREE_SERVICE_LIMIT
-  const progress = Math.min(
-    100,
-    Math.round((activeServices / FREE_SERVICE_LIMIT) * 100)
-  )
+  const isPremium = usage.plan !== "free"
+  const atServiceLimit =
+    !isPremium && usage.limit !== null && usage.used >= usage.limit
+  const progress =
+    isPremium || usage.limit === null
+      ? 100
+      : Math.min(100, Math.round((usage.used / usage.limit) * 100))
 
   return (
     <div className="space-y-5">
@@ -199,7 +203,11 @@ export function VendorOverview({
         <StatCard
           label="Active services"
           value={activeServices}
-          hint={`${activeServices} of ${FREE_SERVICE_LIMIT} on Free plan`}
+          hint={
+            isPremium
+              ? "Unlimited on Premium"
+              : `${usage.used} of ${usage.limit} on Free plan`
+          }
           icon={<EyeIcon aria-hidden className="size-4" />}
           tone="green"
         />
@@ -223,8 +231,8 @@ export function VendorOverview({
         />
         <StatCard
           label="Current plan"
-          value="Free"
-          hint="Upgrade for unlimited"
+          value={isPremium ? "Premium" : "Free"}
+          hint={isPremium ? "Unlimited services" : "Upgrade for unlimited"}
           icon={<CrownIcon aria-hidden className="size-4" />}
           tone="gold"
         />
@@ -315,13 +323,15 @@ export function VendorOverview({
           <section className={cn(CARD, "p-5")}>
             <div className="flex items-center justify-between gap-2">
               <p className="text-[0.66rem] font-semibold tracking-[0.16em] text-[#a98a4b] uppercase">
-                Free plan
+                {isPremium ? "Premium plan" : "Free plan"}
               </p>
               <CrownIcon aria-hidden className="size-4 text-[#c9a24d]" />
             </div>
 
             <p className="mt-3 font-display text-2xl leading-tight text-[#2b2118]">
-              {activeServices} / {FREE_SERVICE_LIMIT} active services
+              {isPremium
+                ? `${usage.used} services · unlimited`
+                : `${usage.used} / ${usage.limit} services`}
             </p>
 
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f4e3e4]">
@@ -332,13 +342,13 @@ export function VendorOverview({
             </div>
 
             <p className="mt-3 text-xs leading-relaxed text-[#2b2118]/55">
-              {atServiceLimit
-                ? "You've reached your limit. Go Premium to publish more."
-                : `${FREE_SERVICE_LIMIT - activeServices} more ${
-                    FREE_SERVICE_LIMIT - activeServices === 1
-                      ? "service"
-                      : "services"
-                  } available on the Free plan.`}
+              {isPremium
+                ? "You're on Premium — add as many services as you like."
+                : atServiceLimit
+                  ? "You've reached your limit. Go Premium to publish more."
+                  : `${usage.remaining ?? 0} more ${
+                      usage.remaining === 1 ? "service" : "services"
+                    } available on the Free plan.`}
             </p>
 
             <Link
@@ -346,7 +356,7 @@ export function VendorOverview({
               className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#e0c07c] bg-[#f2dfb9] text-sm font-medium text-[#6b4a17] transition-colors hover:bg-[#edd6a9] focus-visible:ring-2 focus-visible:ring-[#a98a4b]/35 focus-visible:outline-none"
             >
               <Sparkles aria-hidden className="size-4" />
-              Upgrade to Premium
+              {isPremium ? "Manage subscription" : "Upgrade to Premium"}
             </Link>
           </section>
 

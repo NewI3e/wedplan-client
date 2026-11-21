@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { dashboardPaths } from "@/lib/dashboard"
+import { uploadImage, UploadError } from "@/lib/upload-image"
 import { cn } from "@/lib/utils"
 
 import { useSession } from "@/lib/auth-client"
@@ -39,6 +40,8 @@ const LOCATIONS = [
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
+const SERVICE_PHOTO_ENDPOINT = "/api/service-photo"
+
 type FormValues = {
   name: string
   category: string
@@ -49,6 +52,14 @@ type FormValues = {
 
 type FormErrors = Partial<Record<keyof FormValues, string>>
 type SubmitStatus = "idle" | "submitting" | "submitted"
+
+type ServiceUsage = {
+  plan: string
+  limit: number | null
+  used: number
+  remaining: number | null
+  canCreate: boolean
+}
 
 const initialValues: FormValues = {
   name: "",
@@ -227,10 +238,13 @@ export function AddServiceForm() {
   const [values, setValues] = React.useState(initialValues)
   const [errors, setErrors] = React.useState<FormErrors>({})
   const [photoUrl, setPhotoUrl] = React.useState<string | null>(null)
+  const [photoFile, setPhotoFile] = React.useState<File | null>(null)
   const [photoName, setPhotoName] = React.useState<string | null>(null)
   const [photoError, setPhotoError] = React.useState<string | null>(null)
   const [isDragging, setIsDragging] = React.useState(false)
   const [status, setStatus] = React.useState<SubmitStatus>("idle")
+  const [usage, setUsage] = React.useState<ServiceUsage | null>(null)
+  const [limitReached, setLimitReached] = React.useState(false)
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const objectUrlRef = React.useRef<string | null>(null)
@@ -240,6 +254,35 @@ export function AddServiceForm() {
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
     }
   }, [])
+
+  // Load the vendor's plan and current service count so the banner is real.
+  React.useEffect(() => {
+    if (isPending || !vendorEmail) return
+
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
+    if (!apiUrl) return
+
+    const controller = new AbortController()
+
+    fetch(
+      `${apiUrl}/services/usage?vendorEmail=${encodeURIComponent(
+        vendorEmail.trim().toLowerCase()
+      )}`,
+      { signal: controller.signal, cache: "no-store" }
+    )
+      .then(async (res) =>
+        res.ok ? ((await res.json()) as ServiceUsage) : null
+      )
+      .then((data) => {
+        if (data) setUsage(data)
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        console.error("Failed to load service usage:", error)
+      })
+
+    return () => controller.abort()
+  }, [vendorEmail, isPending])
 
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }))
@@ -270,6 +313,7 @@ export function AddServiceForm() {
     const url = URL.createObjectURL(file)
     objectUrlRef.current = url
     setPhotoUrl(url)
+    setPhotoFile(file)
     setPhotoName(file.name)
     setPhotoError(null)
     setStatus((current) => (current === "submitted" ? "idle" : current))
@@ -291,13 +335,13 @@ export function AddServiceForm() {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
     objectUrlRef.current = null
     setPhotoUrl(null)
+    setPhotoFile(null)
     setPhotoName(null)
     setPhotoError(null)
     setStatus((current) => (current === "submitted" ? "idle" : current))
   }
 
   const [submitError, setSubmitError] = React.useState<string | null>(null)
-
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -326,6 +370,11 @@ export function AddServiceForm() {
     const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
 
     try {
+      // Upload the photo first so the service document stores a real URL.
+      const photoUploadUrl = photoFile
+        ? await uploadImage(photoFile, SERVICE_PHOTO_ENDPOINT)
+        : null
+
       const res = await fetch(`${apiUrl}/services`, {
         method: "POST",
         headers: {
@@ -338,12 +387,34 @@ export function AddServiceForm() {
           price: Number(values.price),
           description: values.description.trim(),
           vendorEmail: vendorEmail,
-          photoUrl: null,
+          photoUrl: photoUploadUrl,
         }),
       })
 
       if (!res.ok) {
         const body = await res.text()
+
+        let payload: Record<string, unknown> | null = null
+
+        try {
+          payload = JSON.parse(body) as Record<string, unknown>
+        } catch {
+          payload = null
+        }
+
+        // The backend is the source of truth for the free-plan limit.
+        // This is an expected outcome, not an error worth logging.
+        if (res.status === 403 && payload?.code === "SUBSCRIPTION_REQUIRED") {
+          const nextUsage = payload.usage
+
+          if (nextUsage && typeof nextUsage === "object") {
+            setUsage(nextUsage as ServiceUsage)
+          }
+
+          setLimitReached(true)
+          setStatus("idle")
+          return
+        }
 
         console.error("Status:", res.status, "Body:", body)
 
@@ -354,38 +425,82 @@ export function AddServiceForm() {
 
       console.log("Service created:", result)
 
+      setLimitReached(false)
+      setUsage((current) => {
+        if (!current) return current
+
+        const used = current.used + 1
+
+        return {
+          ...current,
+          used,
+          remaining:
+            current.limit === null ? null : Math.max(0, current.limit - used),
+          canCreate: current.limit === null || used < current.limit,
+        }
+      })
       setStatus("submitted")
     } catch (error) {
       console.error("Service submission error:", error)
 
-      setSubmitError("Could not submit your service. Please try again.")
+      setSubmitError(
+        error instanceof UploadError
+          ? error.message
+          : "Could not submit your service. Please try again."
+      )
 
       setStatus("idle")
     }
   }
 
-
   return (
     <div className="w-full min-w-0 space-y-4 sm:space-y-6">
       {/* Plan banner: stacked on mobile, inline from sm up */}
-      <div className="flex flex-col gap-3 rounded-xl border border-[#e6cda2] bg-gradient-to-r from-[#f8efdd] via-[#f3e3c6] to-[#e9cfa3] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
-        <p className="flex items-start gap-3 text-sm leading-relaxed text-[#5b4425] sm:items-center">
-          <CrownIcon
-            aria-hidden
-            className="mt-0.5 size-5 shrink-0 text-[#7a5a22] sm:mt-0"
-          />
-          <span className="min-w-0">
-            You have 3 of 3 active services. This one will be saved as paused
-            unless you upgrade.
-          </span>
-        </p>
-        <Link
-          href={dashboardPaths.vendor.subscription}
-          className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-full bg-[#7a1f3d] px-5 text-xs font-medium text-[#f8f2e7] transition-colors hover:bg-[#671a33] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none sm:h-9 sm:w-auto"
+      {usage ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-[#e6cda2] bg-gradient-to-r from-[#f8efdd] via-[#f3e3c6] to-[#e9cfa3] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
+          <p className="flex items-start gap-3 text-sm leading-relaxed text-[#5b4425] sm:items-center">
+            <CrownIcon
+              aria-hidden
+              className="mt-0.5 size-5 shrink-0 text-[#7a5a22] sm:mt-0"
+            />
+            <span className="min-w-0">
+              {usage.plan !== "free"
+                ? "You're on Premium — add as many services as you like."
+                : usage.canCreate
+                  ? `You have ${usage.used} of ${
+                      usage.limit ?? 3
+                    } services on the Free plan.`
+                  : `You've reached the Free plan limit of ${
+                      usage.limit ?? 3
+                    } services. Subscribe to add more.`}
+            </span>
+          </p>
+          <Link
+            href={dashboardPaths.vendor.subscription}
+            className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-full bg-[#7a1f3d] px-5 text-xs font-medium text-[#f8f2e7] transition-colors hover:bg-[#671a33] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none sm:h-9 sm:w-auto"
+          >
+            {usage.plan !== "free" ? "Manage plan" : "Upgrade"}
+          </Link>
+        </div>
+      ) : null}
+
+      {limitReached ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-xl border border-[#e0c07c] bg-[#fdf6e8] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
         >
-          Upgrade
-        </Link>
-      </div>
+          <p className="text-sm leading-relaxed text-[#5b4425]">
+            You&apos;ve reached the Free plan limit of {usage?.limit ?? 3}{" "}
+            services. Go to the subscription page to add more.
+          </p>
+          <Link
+            href={dashboardPaths.vendor.subscription}
+            className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-full bg-[#7a1f3d] px-5 text-xs font-medium text-[#f8f2e7] transition-colors hover:bg-[#671a33] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/30 focus-visible:outline-none sm:h-9 sm:w-auto"
+          >
+            Go to Subscription
+          </Link>
+        </div>
+      ) : null}
 
       <form
         onSubmit={handleSubmit}
@@ -645,6 +760,15 @@ export function AddServiceForm() {
                 Once approved, it appears on Browse Services.
               </p>
             </div>
+
+            {submitError ? (
+              <p
+                role="alert"
+                className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700"
+              >
+                {submitError}
+              </p>
+            ) : null}
 
             <button
               type="submit"
