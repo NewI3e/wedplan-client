@@ -5,6 +5,8 @@ type DashboardPageProps = {
   eyebrow: string
   title: string
   description?: string
+  /** Optional action rendered to the right of the heading, e.g. "Add service". */
+  action?: React.ReactNode
   /** Replace the placeholder card once the API data is ready. */
   children?: React.ReactNode
   placeholder?: string
@@ -18,24 +20,31 @@ export function DashboardPage({
   eyebrow,
   title,
   description,
+  action,
   children,
   placeholder = "This screen's design is not finished yet.",
 }: DashboardPageProps) {
   return (
     <div className="w-full px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-      <p className="text-[0.68rem] font-medium tracking-[0.22em] text-[#a98a4b] uppercase">
-        {eyebrow}
-      </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-medium tracking-[0.22em] text-[#a98a4b] uppercase">
+            {eyebrow}
+          </p>
 
-      <h1 className="mt-2 font-display text-4xl leading-[1.1] font-medium text-[#2b2118] sm:text-5xl">
-        {title}
-      </h1>
+          <h1 className="mt-2 font-display text-4xl leading-[1.1] font-medium text-[#2b2118] sm:text-5xl">
+            {title}
+          </h1>
 
-      {description ? (
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#2b2118]/55">
-          {description}
-        </p>
-      ) : null}
+          {description ? (
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#2b2118]/55">
+              {description}
+            </p>
+          ) : null}
+        </div>
+
+        {action ? <div className="shrink-0 sm:pt-7">{action}</div> : null}
+      </div>
 
       <div className="mt-8">
         {children ?? <DashboardPlaceholder message={placeholder} />}

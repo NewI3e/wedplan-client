@@ -151,7 +151,7 @@ export default function ServicesPage() {
     if (authLoading) return;
 
     if (!session?.user) {
-      router.push("/signin");
+      router.push("/sign-in");
       return;
     }
 
