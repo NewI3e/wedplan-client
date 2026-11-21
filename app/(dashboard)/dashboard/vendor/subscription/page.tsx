@@ -1,8 +1,6 @@
 import type { Metadata } from "next"
 import { CheckIcon, CrownIcon, LockIcon, SparklesIcon } from "lucide-react"
 
-import Link from "next/link";
-
 import { DashboardPage } from "@/components/dashboard/dashboard-page"
 import { UpgradeButton } from "@/components/dashboard/vendor/upgrade-button"
 import { requireDashboardRole } from "@/lib/auth-server"
@@ -30,7 +28,7 @@ const PREMIUM_FEATURES = [
 ]
 
 // Placeholder until the Stripe Price is connected.
-const PREMIUM_MONTHLY_PRICE = "৳2,500"
+const PREMIUM_MONTHLY_PRICE = "$9.99"
 
 function FeatureList({
   features,
@@ -158,12 +156,13 @@ export default async function VendorSubscriptionPage() {
 
             <div className="mt-auto pt-8">
               {isPremium ? (
-                <Link
-                  href="/payment"
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-[#f2dfb9]/60 text-sm font-medium text-[#6b4a17] transition hover:bg-[#f2dfb9]"
+                <button
+                  type="button"
+                  disabled
+                  className="flex h-12 w-full cursor-not-allowed items-center justify-center rounded-full bg-[#f2dfb9]/60 text-sm font-medium text-[#6b4a17]"
                 >
                   Your current plan
-                </Link>
+                </button>
               ) : (
                 <UpgradeButton />
               )}
