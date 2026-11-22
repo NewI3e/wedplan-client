@@ -271,8 +271,6 @@ export function CustomerOverview({
                 <div className="grid sm:grid-cols-[190px_1fr]">
                   <div className="relative min-h-48 overflow-hidden bg-[#efe6d6] sm:min-h-60">
                     {nextEvent.serviceImage ? (
-                      // Vendor-uploaded images can come from any host.
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={nextEvent.serviceImage}
                         alt=""
@@ -462,7 +460,6 @@ export function CustomerOverview({
                   >
                     <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#e8decd] bg-[#efe6d6]">
                       {booking.serviceImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={booking.serviceImage}
                           alt=""

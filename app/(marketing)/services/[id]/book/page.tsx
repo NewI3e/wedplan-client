@@ -39,12 +39,10 @@ export default function BookServicePage() {
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState("");
 
-    // Send logged-out users to login
     useEffect(() => {
         if (!isPending && !session?.user) router.push("/login");
     }, [isPending, session, router]);
 
-    // Load service summary
     useEffect(() => {
         if (!serviceId) return;
         (async () => {

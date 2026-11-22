@@ -13,7 +13,6 @@ import {
 import {
   ArrowUpRight,
   Sparkles,
-  // keep your existing imports
 } from "lucide-react";
 
 import {
@@ -285,8 +284,6 @@ export function VendorOverview({
                     >
                       <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#e8decd] bg-[#f8e6e2] font-display text-xs font-medium text-[#7a1f3d]">
                         {booking.customerImage ? (
-                          // Customer avatars can come from any auth provider host.
-                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={booking.customerImage}
                             alt=""

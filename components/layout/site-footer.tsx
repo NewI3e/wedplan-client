@@ -15,7 +15,6 @@ const accountLinks = [
   { label: "Profile Settings", href: routes.profile },
 ]
 
-// lucide-react no longer ships brand icons, so these are inline SVG paths.
 const socials = [
   {
     label: "Facebook",

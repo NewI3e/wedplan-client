@@ -462,7 +462,6 @@ export function ProfileSettingsForm({
               accept="image/png,image/jpeg,image/webp"
               onChange={(event) => {
                 selectPhoto(event.target.files?.[0])
-                // Reset so choosing the same file again still fires onChange.
                 event.target.value = ""
               }}
               className="sr-only"

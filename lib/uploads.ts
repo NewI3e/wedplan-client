@@ -17,7 +17,6 @@ export type StoredImage = {
   createdAt: Date
 }
 
-// Reuse one client across hot reloads so dev doesn't open a connection per edit.
 const globalForUploads = globalThis as unknown as {
   uploadsClient?: MongoClient
 }

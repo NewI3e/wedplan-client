@@ -48,7 +48,6 @@ const emptyForm = {
 }
 
 export function VendorServicesList() {
-  // Get logged-in user session
   const { data: session, isPending } = useSession()
 
   const vendorEmail = session?.user?.email
@@ -134,7 +133,6 @@ export function VendorServicesList() {
 
   const editPhotoSrc = photoPreview ?? (form.photoUrl.trim() || null)
 
-  // Fetch services belonging to the logged-in vendor
   React.useEffect(() => {
     if (isPending || !vendorEmail || !API_URL) {
       return
@@ -179,7 +177,6 @@ export function VendorServicesList() {
     return () => controller.abort()
   }, [vendorEmail, reloadKey, isPending])
 
-  // Open edit modal
   const handleEdit = (service: Service) => {
     clearEditPhoto()
     setEditingService(service)
@@ -194,7 +191,6 @@ export function VendorServicesList() {
     })
   }
 
-  // Update service details
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
@@ -254,7 +250,6 @@ export function VendorServicesList() {
     }
   }
 
-  // Toggle service availability
   const handleAvailability = async (service: Service) => {
     const nextAvailable = !(service.available ?? true)
 
@@ -297,7 +292,6 @@ export function VendorServicesList() {
     }
   }
 
-  // Delete service
   const handleDelete = async () => {
     if (!deletingService) return
 
@@ -324,7 +318,6 @@ export function VendorServicesList() {
     }
   }
 
-  // Wait for Better Auth session
   if (isPending) {
     return (
       <div className="flex min-h-60 items-center justify-center">
@@ -333,7 +326,6 @@ export function VendorServicesList() {
     )
   }
 
-  // Check logged-in user
   if (!vendorEmail) {
     return (
       <div className="rounded-xl border p-6 text-center">
@@ -345,7 +337,6 @@ export function VendorServicesList() {
     )
   }
 
-  // Check API URL
   if (!API_URL) {
     return (
       <div className="rounded-xl border border-destructive/30 p-6 text-center">
@@ -356,7 +347,6 @@ export function VendorServicesList() {
     )
   }
 
-  // Loading services
   if (services === null && !loadError) {
     return (
       <div className="flex min-h-60 items-center justify-center">
@@ -432,8 +422,6 @@ export function VendorServicesList() {
                   {/* Service image */}
                   <div className="h-24 w-full shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
                     {service.photoUrl ? (
-                      // Uploaded photos are served from our own API route.
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={service.photoUrl}
                         alt={service.name}
@@ -620,8 +608,6 @@ export function VendorServicesList() {
                 <div className="flex items-center gap-3">
                   <div className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-dashed bg-muted">
                     {editPhotoSrc ? (
-                      // Object URLs can't go through next/image.
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={editPhotoSrc}
                         alt="Service photo preview"

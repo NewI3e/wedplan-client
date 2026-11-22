@@ -25,8 +25,6 @@ import { cn } from "@/lib/utils"
 export function SiteHeader() {
   const pathname = usePathname()
   const { data: session, isPending } = useSession()
-  // Track which route the menu was opened on, so navigating closes it
-  // without an effect.
   const [openOnPath, setOpenOnPath] = React.useState<string | null>(null)
   const mobileOpen = openOnPath === pathname
 

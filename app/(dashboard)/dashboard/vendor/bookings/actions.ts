@@ -49,7 +49,6 @@ export async function decideBookingAction(
   const vendorEmail = session.user.email
 
   try {
-    // Re-check ownership against the API result before mutating anything.
     const { bookings } = await getVendorBookings(vendorEmail)
     const booking = bookings.find((item) => item._id === bookingId)
 

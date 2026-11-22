@@ -25,7 +25,6 @@ export async function uploadImage(file: File, endpoint: string) {
       const payload = (await response.json()) as { error?: string }
       if (payload.error) message = payload.error
     } catch {
-      // Keep the generic message when the body isn't JSON.
     }
 
     throw new UploadError(message)

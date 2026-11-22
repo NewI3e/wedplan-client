@@ -1,4 +1,5 @@
 *.js filter=strip-comments
+*.jsx filter=strip-comments
 *.ts filter=strip-comments
 *.tsx filter=strip-comments
-*.jsx filter=strip-comments
+

@@ -136,8 +136,6 @@ function ServiceCard({ service }: { service: HomeService }) {
 
         <div className="mt-4 flex items-center gap-2.5">
           {service.vendor?.image ? (
-            // Vendor avatars can be served by our upload API or an auth host.
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={service.vendor.image}
               alt=""

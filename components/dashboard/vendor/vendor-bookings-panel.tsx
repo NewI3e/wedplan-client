@@ -81,7 +81,6 @@ export function VendorBookingsPanel({
     React.useState<DecisionTarget | null>(null)
   const [decidingId, setDecidingId] = React.useState<string | null>(null)
 
-  // Apply optimistic decisions without copying server data into state.
   const items = React.useMemo(
     () =>
       bookings.map((booking) =>
@@ -262,8 +261,6 @@ export function VendorBookingsPanel({
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#e8decd] bg-[#f8e6e2] font-display text-xs font-medium text-[#7a1f3d]">
                       {booking.customerImage ? (
-                        // Customer avatars can come from any auth provider host.
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={booking.customerImage}
                           alt=""
@@ -291,8 +288,6 @@ export function VendorBookingsPanel({
                 <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#eee5d6] bg-[#faf6ee] p-2.5">
                   <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#efe6d6]">
                     {booking.serviceImage ? (
-                      // Vendor-uploaded images can come from any host.
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={booking.serviceImage}
                         alt=""

@@ -44,8 +44,6 @@ function ServiceCell({ booking }: { booking: CustomerBooking }) {
     <div className="flex min-w-0 items-center gap-3">
       <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#e8decd] bg-[#efe6d6]">
         {booking.serviceImage ? (
-          // Remote vendor images are arbitrary hosts, so next/image needs a
-          // configured allow-list; a plain img is safer for now.
           <img
             src={booking.serviceImage}
             alt=""
@@ -124,8 +122,6 @@ export function CustomerBookingsPanel({
     React.useState<CustomerBooking | null>(null)
   const [cancellingId, setCancellingId] = React.useState<string | null>(null)
 
-  // Apply optimistic statuses without copying server data into state, so a
-  // Server Action revalidation automatically wins for every other field.
   const items = React.useMemo(
     () =>
       bookings.map((booking) =>

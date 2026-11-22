@@ -73,7 +73,6 @@ export function formatBookingDate(value: string, fallback = "—") {
 
   if (Number.isNaN(date.getTime())) return fallback
 
-  // UTC keeps the server-rendered HTML and the browser in sync.
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",

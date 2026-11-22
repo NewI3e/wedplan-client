@@ -78,7 +78,6 @@ function ServicesPageContent() {
   const initialCategory = searchParams.get("category") ?? "All";
   const initialSearch = searchParams.get("q") ?? "";
 
-  // Remount when the URL params change so state resets without an effect.
   return (
     <ServicesBrowser
       key={JSON.stringify([initialCategory, initialSearch])}
@@ -110,7 +109,6 @@ function ServicesBrowser({
 
   const [error, setError] = useState("");
 
-  // Fetch services from API
   useEffect(() => {
     const fetchServices = async () => {
       try {
@@ -138,16 +136,13 @@ function ServicesBrowser({
     fetchServices();
   }, []);
 
-  // Only approved and active services
   const approvedServices = useMemo(() => {
     return services.filter(
       (service) =>
-        // service.status === "approved" &&
         service.isActive !== false
     );
   }, [services]);
 
-  // Get categories dynamically from API
   const categories = useMemo(() => {
     return [
       "All",
@@ -157,7 +152,6 @@ function ServicesBrowser({
     ];
   }, [approvedServices]);
 
-  // Get locations dynamically from API
   const locations = useMemo(() => {
     return [
       "All",
@@ -167,7 +161,6 @@ function ServicesBrowser({
     ];
   }, [approvedServices]);
 
-  // Search and filters
   const filteredServices = useMemo(() => {
     return approvedServices.filter((service) => {
       const matchesSearch = [service.name, service.category, service.location, service.description]
@@ -191,7 +184,6 @@ function ServicesBrowser({
     });
   }, [approvedServices, search, category, location]);
 
-  // Authentication-based navigation
   const handleViewDetails = (id: string) => {
     if (authLoading) return;
 
@@ -203,7 +195,6 @@ function ServicesBrowser({
     router.push(`/services/${id}`);
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setSearch("");
     setCategory("All");
@@ -435,7 +426,6 @@ function ServicesBrowser({
                   <div className="relative aspect-[4/3] overflow-hidden bg-[#eee5d9]">
 
                     {service.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={service.photoUrl}
                         alt={service.name}
@@ -471,7 +461,6 @@ function ServicesBrowser({
                         <div className="flex min-w-0 items-center gap-2">
 
                           {service.vendor.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={service.vendor.image}
                               alt=""

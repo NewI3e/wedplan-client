@@ -69,7 +69,6 @@ const initialValues: FormValues = {
   description: "",
 }
 
-// text-base on mobile keeps iOS Safari from zooming into focused fields.
 const inputClasses =
   "h-11 w-full min-w-0 rounded-lg border border-[#ddd2c2] bg-white px-3.5 text-base text-[#2b2118] outline-none transition-colors placeholder:text-[#2b2118]/35 focus:border-[#7a1f3d] focus:ring-3 focus:ring-[#7a1f3d]/15 aria-invalid:border-red-400 aria-invalid:ring-red-200/60 sm:text-sm"
 
@@ -115,7 +114,6 @@ function SelectField({
   const listRef = React.useRef<HTMLUListElement>(null)
   const listId = `${id}-listbox`
 
-  // Close when clicking or tapping outside.
   React.useEffect(() => {
     if (!open) return
     function handlePointerDown(event: PointerEvent) {
@@ -125,7 +123,6 @@ function SelectField({
     return () => document.removeEventListener("pointerdown", handlePointerDown)
   }, [open])
 
-  // Keep the highlighted option visible while using the keyboard.
   React.useEffect(() => {
     if (!open) return
     listRef.current?.children[activeIndex]?.scrollIntoView({ block: "nearest" })
@@ -255,7 +252,6 @@ export function AddServiceForm() {
     }
   }, [])
 
-  // Load the vendor's plan and current service count so the banner is real.
   React.useEffect(() => {
     if (isPending || !vendorEmail) return
 
@@ -292,7 +288,6 @@ export function AddServiceForm() {
       delete next[key]
       return next
     })
-    // Editing after a submit lets the vendor send it again.
     setStatus((current) => (current === "submitted" ? "idle" : current))
   }
 
@@ -321,7 +316,6 @@ export function AddServiceForm() {
 
   function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
     handleFile(event.target.files?.[0])
-    // Reset so choosing the same file again still fires onChange.
     event.target.value = ""
   }
 
@@ -370,7 +364,6 @@ export function AddServiceForm() {
     const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
 
     try {
-      // Upload the photo first so the service document stores a real URL.
       const photoUploadUrl = photoFile
         ? await uploadImage(photoFile, SERVICE_PHOTO_ENDPOINT)
         : null
@@ -402,8 +395,6 @@ export function AddServiceForm() {
           payload = null
         }
 
-        // The backend is the source of truth for the free-plan limit.
-        // This is an expected outcome, not an error worth logging.
         if (res.status === 403 && payload?.code === "SUBSCRIPTION_REQUIRED") {
           const nextUsage = payload.usage
 
@@ -669,7 +660,6 @@ export function AddServiceForm() {
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
                 className={cn(
-                  // Shorter 4:3 box on phones, fills the column on desktop.
                   "group relative flex aspect-[4/3] w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed px-4 text-center transition-colors focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/20 focus-visible:outline-none sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-auto lg:min-h-[360px] lg:flex-1",
                   isDragging
                     ? "border-[#7a1f3d] bg-[#f7efe4]"

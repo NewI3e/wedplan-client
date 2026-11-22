@@ -140,7 +140,6 @@ export function SignUpForm() {
         return
       }
 
-      // The account exists now, so the user is signed in and can upload.
       if (photoFile) {
         try {
           const image = await uploadImage(photoFile, "/api/profile-photo")
@@ -268,7 +267,6 @@ export function SignUpForm() {
               className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-dashed border-[#c9bcaa] bg-white/60 text-[#2b2118]/45 transition-colors hover:border-[#7a1f3d]/60 hover:text-[#7a1f3d] focus-visible:ring-3 focus-visible:ring-[#7a1f3d]/15 focus-visible:outline-none"
             >
               {photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={photoUrl}
                   alt="Your profile photo preview"
@@ -312,7 +310,6 @@ export function SignUpForm() {
             accept="image/png,image/jpeg,image/webp"
             onChange={(event) => {
               handlePhotoChange(event)
-              // Reset so choosing the same file again still fires onChange.
               event.target.value = ""
             }}
             className="sr-only"

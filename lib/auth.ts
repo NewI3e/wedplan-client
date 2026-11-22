@@ -8,7 +8,6 @@ const db = client.db("wedplandb")
 export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
-    // The sign-up form tells people 6+, so keep the server in sync.
     minPasswordLength: 6,
   },
   user: {
@@ -19,7 +18,6 @@ export const auth = betterAuth({
         defaultValue: "customer",
         input: true,
       },
-      // Editable from the profile settings page.
       phone: { type: "string", required: false, input: true },
       city: { type: "string", required: false, input: true },
       bio: { type: "string", required: false, input: true },
@@ -32,15 +30,12 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Never let a client register itself as an admin.
-          // Admins are promoted directly in the database.
           const role = user.role === "vendor" ? "vendor" : "customer"
           return { data: { ...user, role } }
         },
       },
       update: {
         before: async (user) => {
-          // Profile updates may not change roles either.
           const data: Record<string, unknown> = { ...user }
           delete data.role
           return { data }

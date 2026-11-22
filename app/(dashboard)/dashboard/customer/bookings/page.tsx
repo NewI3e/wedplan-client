@@ -10,8 +10,6 @@ export const metadata: Metadata = {
 }
 
 export default async function CustomerBookingsPage() {
-  // The layout already guards this segment, but the page also needs the
-  // session email so the API only returns this customer's bookings.
   const { session } = await requireDashboardRole("customer")
   const { bookings, error } = await getCustomerBookings(session.user.email)
 

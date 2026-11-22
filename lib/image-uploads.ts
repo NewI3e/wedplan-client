@@ -81,7 +81,6 @@ export async function handleImageGet(
     return new Response("Not found", { status: 404 })
   }
 
-  // The URL never changes for a given upload, so it is safe to cache hard.
   return new Response(new Uint8Array(image.data.value()), {
     headers: {
       "Content-Type": image.contentType,

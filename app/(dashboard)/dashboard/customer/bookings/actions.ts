@@ -40,7 +40,6 @@ export async function cancelBookingAction(
   const customerEmail = session.user.email
 
   try {
-    // Re-check ownership against the API result before mutating anything.
     const { bookings } = await getCustomerBookings(customerEmail)
     const booking = bookings.find((item) => item._id === bookingId)
 
