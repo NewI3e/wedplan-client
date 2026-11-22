@@ -1,28 +1,17 @@
+"use client"
 
-"use client";
+import { Suspense, useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { motion, useReducedMotion } from "framer-motion"
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, useReducedMotion } from "framer-motion";
+import { Search, MapPin, SlidersHorizontal, Star, Store } from "lucide-react"
 
-import {
-  Search,
-  MapPin,
-  SlidersHorizontal,
-  Star,
-  Store,
-} from "lucide-react";
+import { useSession } from "@/lib/auth-client"
 
-import { useSession } from "@/lib/auth-client";
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 import {
   Select,
@@ -30,32 +19,33 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"
 
 type Service = {
-  _id: string;
-  name: string;
-  category: string;
-  location: string;
-  price: number;
-  description: string;
-  photoUrl: string | null;
-  status: string;
-  createdAt: string;
-  isActive?: boolean;
+  _id: string
+  name: string
+  category: string
+  location: string
+  price: number
+  description: string
+  photoUrl: string | null
+  status: string
+  createdAt: string
+  isActive?: boolean
+  available?: boolean
   vendor?: {
-    name?: string;
-    image?: string;
-    rating?: number;
-  };
-};
+    name?: string
+    image?: string
+    rating?: number
+  }
+}
 
 export default function ServicesPage() {
   return (
     <Suspense fallback={<ServicesPageFallback />}>
       <ServicesPageContent />
     </Suspense>
-  );
+  )
 }
 
 function ServicesPageFallback() {
@@ -69,14 +59,14 @@ function ServicesPageFallback() {
         </div>
       </section>
     </main>
-  );
+  )
 }
 
 function ServicesPageContent() {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams()
 
-  const initialCategory = searchParams.get("category") ?? "All";
-  const initialSearch = searchParams.get("q") ?? "";
+  const initialCategory = searchParams.get("category") ?? "All"
+  const initialSearch = searchParams.get("q") ?? ""
 
   return (
     <ServicesBrowser
@@ -84,159 +74,149 @@ function ServicesPageContent() {
       initialCategory={initialCategory}
       initialSearch={initialSearch}
     />
-  );
+  )
 }
 
 function ServicesBrowser({
   initialCategory,
   initialSearch,
 }: {
-  initialCategory: string;
-  initialSearch: string;
+  initialCategory: string
+  initialSearch: string
 }) {
-  const router = useRouter();
+  const router = useRouter()
 
-  const { data: session, isPending: authLoading } = useSession();
+  const { data: session, isPending: authLoading } = useSession()
 
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = useReducedMotion()
 
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [search, setSearch] = useState(initialSearch);
-  const [category, setCategory] = useState(initialCategory);
-  const [location, setLocation] = useState("All");
+  const [search, setSearch] = useState(initialSearch)
+  const [category, setCategory] = useState(initialCategory)
+  const [location, setLocation] = useState("All")
 
-  const [error, setError] = useState("");
+  const [error, setError] = useState("")
 
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const apiUrl = (
-          process.env.NEXT_PUBLIC_API_URL ?? ""
-        ).replace(/\/+$/, "");
+        const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(
+          /\/+$/,
+          ""
+        )
 
-        const response = await fetch(`${apiUrl}/services`);
+        const response = await fetch(`${apiUrl}/services`)
 
         if (!response.ok) {
-          throw new Error("Failed to fetch services");
+          throw new Error("Failed to fetch services")
         }
 
-        const data: Service[] = await response.json();
+        const data: Service[] = await response.json()
 
-        setServices(data);
+        setServices(data)
       } catch (err) {
-        console.error(err);
-        setError("Unable to load services. Please try again.");
+        console.error(err)
+        setError("Unable to load services. Please try again.")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchServices();
-  }, []);
+    fetchServices()
+  }, [])
 
   const approvedServices = useMemo(() => {
     return services.filter(
       (service) =>
-        service.isActive !== false
-    );
-  }, [services]);
+        service.status?.toLowerCase() === "approved" &&
+        service.isActive !== false &&
+        service.available !== false
+    )
+  }, [services])
 
   const categories = useMemo(() => {
     return [
       "All",
-      ...new Set(
-        approvedServices.map((service) => service.category)
-      ),
-    ];
-  }, [approvedServices]);
+      ...new Set(approvedServices.map((service) => service.category)),
+    ]
+  }, [approvedServices])
 
   const locations = useMemo(() => {
     return [
       "All",
-      ...new Set(
-        approvedServices.map((service) => service.location)
-      ),
-    ];
-  }, [approvedServices]);
+      ...new Set(approvedServices.map((service) => service.location)),
+    ]
+  }, [approvedServices])
 
   const filteredServices = useMemo(() => {
     return approvedServices.filter((service) => {
-      const matchesSearch = [service.name, service.category, service.location, service.description]
+      const matchesSearch = [
+        service.name,
+        service.category,
+        service.location,
+        service.description,
+      ]
         .join(" ")
         .toLowerCase()
-        .includes(search.trim().toLowerCase());
+        .includes(search.trim().toLowerCase())
 
       const matchesCategory =
-        category === "All" ||
-        service.category === category;
+        category === "All" || service.category === category
 
       const matchesLocation =
-        location === "All" ||
-        service.location === location;
+        location === "All" || service.location === location
 
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesLocation
-      );
-    });
-  }, [approvedServices, search, category, location]);
+      return matchesSearch && matchesCategory && matchesLocation
+    })
+  }, [approvedServices, search, category, location])
 
   const handleViewDetails = (id: string) => {
-    if (authLoading) return;
+    if (authLoading) return
 
     if (!session?.user) {
-      router.push("/sign-in");
-      return;
+      router.push("/sign-in")
+      return
     }
 
-    router.push(`/services/${id}`);
-  };
+    router.push(`/services/${id}`)
+  }
 
   const clearFilters = () => {
-    setSearch("");
-    setCategory("All");
-    setLocation("All");
-  };
+    setSearch("")
+    setCategory("All")
+    setLocation("All")
+  }
 
   return (
     <main className="min-h-screen bg-[#fbf7ef]">
-
       {/* Hero and Filters */}
       <section className="border-b border-[#e8decd] bg-[#faeee7]">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-5 sm:py-14 md:py-20">
-
           {/* Hero Content */}
           <motion.div
-            initial={
-              shouldReduceMotion
-                ? false
-                : { opacity: 0, y: 20 }
-            }
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-[#b08a3e]">
+            <p className="mb-3 text-xs font-semibold tracking-[0.25em] text-[#b08a3e] uppercase">
               Browse Services
             </p>
 
-            <h1 className="font-display text-3xl font-medium leading-tight text-[#2b2118] sm:text-4xl md:text-5xl">
+            <h1 className="font-display text-3xl leading-tight font-medium text-[#2b2118] sm:text-4xl md:text-5xl">
               Find your perfect vendors
             </h1>
 
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#79685e] sm:mt-4 sm:text-base">
-              Explore approved wedding services across Bangladesh.
-              Sign in to view full details and send booking requests.
+              Explore approved wedding services across Bangladesh. Sign in to
+              view full details and send booking requests.
             </p>
           </motion.div>
 
           {/* Search and Filters */}
           <div className="mt-8 rounded-2xl border border-[#e8decd] bg-white p-3 shadow-sm sm:mt-9 sm:p-4">
-
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_210px_180px]">
-
               {/* Search Input */}
               <div className="relative min-w-0">
                 <Search className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#907f72]" />
@@ -261,9 +241,7 @@ function ServicesBrowser({
                 <SelectContent className="max-h-64">
                   {categories.map((item) => (
                     <SelectItem key={item} value={item}>
-                      {item === "All"
-                        ? "All categories"
-                        : item}
+                      {item === "All" ? "All categories" : item}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -281,14 +259,11 @@ function ServicesBrowser({
                 <SelectContent className="max-h-64">
                   {locations.map((item) => (
                     <SelectItem key={item} value={item}>
-                      {item === "All"
-                        ? "All locations"
-                        : item}
+                      {item === "All" ? "All locations" : item}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
             </div>
           </div>
 
@@ -309,13 +284,11 @@ function ServicesBrowser({
               </button>
             ))}
           </div>
-
         </div>
       </section>
 
       {/* Service Listings */}
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-5 sm:py-10 md:py-12">
-
         {/* Service Count */}
         <div className="mb-6 flex items-center justify-between sm:mb-7">
           <p className="flex items-center gap-2 text-xs text-[#79685e] sm:text-sm">
@@ -350,9 +323,7 @@ function ServicesBrowser({
         {/* Error State */}
         {!loading && error && (
           <div className="py-16 text-center sm:py-20">
-            <p className="text-sm text-red-600">
-              {error}
-            </p>
+            <p className="text-sm text-red-600">{error}</p>
 
             <Button
               className="mt-4 bg-[#7a1f3d]"
@@ -376,11 +347,7 @@ function ServicesBrowser({
               Try changing your search or filters.
             </p>
 
-            <Button
-              variant="outline"
-              className="mt-5"
-              onClick={clearFilters}
-            >
+            <Button variant="outline" className="mt-5" onClick={clearFilters}>
               Clear filters
             </Button>
           </div>
@@ -414,17 +381,11 @@ function ServicesBrowser({
                   },
                 }}
                 transition={{ duration: 0.4 }}
-                whileHover={
-                  shouldReduceMotion
-                    ? undefined
-                    : { y: -5 }
-                }
+                whileHover={shouldReduceMotion ? undefined : { y: -5 }}
               >
                 <Card className="group h-full overflow-hidden rounded-xl border-[#e8decd] bg-white p-0 shadow-sm transition-shadow hover:shadow-lg">
-
                   {/* Service Image */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-[#eee5d9]">
-
                     {service.photoUrl ? (
                       <img
                         src={service.photoUrl}
@@ -437,14 +398,13 @@ function ServicesBrowser({
                       </div>
                     )}
 
-                    <span className="absolute top-3 left-3 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#7a1f3d]">
+                    <span className="absolute top-3 left-3 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-semibold tracking-[0.15em] text-[#7a1f3d] uppercase">
                       {service.category}
                     </span>
                   </div>
 
                   {/* Service Information */}
                   <CardContent className="space-y-3 p-4 sm:p-5">
-
                     <h2 className="line-clamp-1 font-display text-lg text-[#2b2118] sm:text-xl">
                       {service.name}
                     </h2>
@@ -457,9 +417,7 @@ function ServicesBrowser({
                     {/* Vendor Information */}
                     {service.vendor && (
                       <div className="flex items-center justify-between gap-2">
-
                         <div className="flex min-w-0 items-center gap-2">
-
                           {service.vendor.image ? (
                             <img
                               src={service.vendor.image}
@@ -488,7 +446,7 @@ function ServicesBrowser({
 
                     {/* Price */}
                     <div className="border-t border-[#eee4d5] pt-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#907f72]">
+                      <p className="text-[10px] font-semibold tracking-[0.2em] text-[#907f72] uppercase">
                         Starting at
                       </p>
 
@@ -496,11 +454,10 @@ function ServicesBrowser({
                         ৳{service.price.toLocaleString("en-BD")}
                       </p>
                     </div>
-
                   </CardContent>
 
                   {/* Details Button */}
-                  <CardFooter className="px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                  <CardFooter className="px-4 pt-0 pb-4 sm:px-5 sm:pb-5">
                     <Button
                       onClick={() => handleViewDetails(service._id)}
                       disabled={authLoading}
@@ -509,14 +466,12 @@ function ServicesBrowser({
                       View Details
                     </Button>
                   </CardFooter>
-
                 </Card>
               </motion.div>
             ))}
           </motion.div>
         )}
-
       </section>
     </main>
-  );
+  )
 }

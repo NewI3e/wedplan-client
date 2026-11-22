@@ -66,19 +66,11 @@ function isApprovedAndActive(service: ApiService) {
   )
 }
 
-function isActive(service: ApiService) {
-  return (
-    String(service.status ?? "").toLowerCase() !== "rejected" &&
-    service.available !== false &&
-    service.isActive !== false
-  )
-}
-
 /**
  * Approved, active services for the homepage, newest first.
  *
- * Until a vendor has been approved through the admin workflow we fall back to
- * the other active listings so the section is never empty for new platforms.
+ * Unapproved listings are never featured: a service only becomes public after
+ * an admin approves it in the dashboard.
  */
 export async function getFeaturedServices(limit = 6): Promise<HomeService[]> {
   const [services, users] = await Promise.all([
@@ -94,8 +86,8 @@ export async function getFeaturedServices(limit = 6): Promise<HomeService[]> {
     if (user?.email) vendorsByEmail.set(user.email.toLowerCase(), user)
   }
 
-  const approved = services.filter(isApprovedAndActive)
-  const featured = (approved.length > 0 ? approved : services.filter(isActive))
+  const featured = services
+    .filter(isApprovedAndActive)
     .sort((a, b) => {
       const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0

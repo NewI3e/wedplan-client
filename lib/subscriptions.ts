@@ -17,6 +17,7 @@ import { stripe } from "@/lib/stripe"
 export const PREMIUM_PLAN = "premium"
 
 export type VendorSubscription = {
+  _id?: unknown
   vendorEmail: string
   userId: string | null
   plan: string
@@ -36,6 +37,9 @@ export type VendorSubscription = {
   currentPeriodEnd: Date | null
   cancelAtPeriodEnd: boolean
   canceledAt: Date | null
+  /** Set by refund handling so the admin transactions view can flag refunds. */
+  refunded?: boolean
+  refundedAt?: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -59,6 +63,11 @@ export function subscriptionsCollection() {
   return getClient()
     .db("wedplandb")
     .collection<VendorSubscription>("subscriptions")
+}
+
+/** Shared handle for other server-side admin data (users, services, etc.). */
+export function appDb() {
+  return getClient().db("wedplandb")
 }
 
 /** One index per process is enough; failures are logged, not fatal. */

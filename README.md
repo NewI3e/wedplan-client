@@ -17,7 +17,7 @@ This will place the ui components in the `components` directory.
 To use the components in your app, import them as follows:
 
 ```tsx
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 ```
 
 ## Vendor subscriptions (Stripe)
@@ -51,4 +51,5 @@ Flow:
    sync via `customer.subscription.*` events.
 5. While `status` is `active` and `currentPeriodEnd` is in the future, the API
    reports the `premium` plan and allows unlimited services.
-
+6. Admins can review every subscription payment at
+   `/dashboard/admin/transactions`, including a CSV export and receipt view.
