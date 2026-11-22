@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-
+import { ForgotPasswordForm } from "@/components/auth/forgot-password-form"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { routes } from "@/lib/routes"
 
@@ -26,9 +26,7 @@ export default function ForgotPasswordPage() {
           Enter your email and we&apos;ll send you a link to reset it.
         </p>
 
-        <p className="mt-8 rounded-lg border border-dashed border-[#d9cfc0] bg-white/40 p-4 text-sm text-[#2b2118]/60">
-          Password reset form goes here.
-        </p>
+        <ForgotPasswordForm />
 
         <Link
           href={routes.signIn}

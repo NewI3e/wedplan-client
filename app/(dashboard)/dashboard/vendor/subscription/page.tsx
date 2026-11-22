@@ -4,6 +4,10 @@ import { CheckIcon, CrownIcon, LockIcon, SparklesIcon } from "lucide-react"
 import { DashboardPage } from "@/components/dashboard/dashboard-page"
 import { UpgradeButton } from "@/components/dashboard/vendor/upgrade-button"
 import { requireDashboardRole } from "@/lib/auth-server"
+import {
+  getLatestSubscription,
+  type VendorSubscription,
+} from "@/lib/subscriptions"
 import { getVendorServiceUsage } from "@/lib/vendor-overview"
 import { cn } from "@/lib/utils"
 
@@ -27,8 +31,15 @@ const PREMIUM_FEATURES = [
   "All Free plan features",
 ]
 
-// Placeholder until the Stripe Price is connected.
-const PREMIUM_MONTHLY_PRICE = "$9.99"
+const PREMIUM_MONTHLY_PRICE = "$20.00"
+
+function formatDate(value: Date | null | undefined) {
+  if (!value) return null
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+  }).format(value)
+}
 
 function FeatureList({
   features,
@@ -65,7 +76,28 @@ export default async function VendorSubscriptionPage() {
   const { session } = await requireDashboardRole("vendor")
   const usage = await getVendorServiceUsage(session.user.email)
 
-  const isPremium = usage.plan !== "free"
+  let subscription: VendorSubscription | null = null
+
+  try {
+    subscription = await getLatestSubscription(session.user.email)
+  } catch (error) {
+    console.error("Failed to load vendor subscription:", error)
+  }
+
+  const isPremium =
+    usage.plan !== "free" ||
+    (subscription?.status === "active" &&
+      (!subscription.currentPeriodEnd ||
+        subscription.currentPeriodEnd > new Date()))
+  const periodEnd = formatDate(subscription?.currentPeriodEnd)
+
+  const billingNote = !isPremium
+    ? "No payment method on file"
+    : subscription?.cancelAtPeriodEnd && periodEnd
+      ? `Access ends on ${periodEnd}`
+      : periodEnd
+        ? `Renews on ${periodEnd}`
+        : "Managed with Stripe"
 
   return (
     <DashboardPage
@@ -94,7 +126,7 @@ export default async function VendorSubscriptionPage() {
           </div>
 
           <p className="text-sm text-[#2b2118]/45 sm:text-right">
-            {isPremium ? "Managed with Stripe" : "No payment method on file"}
+            {billingNote}
           </p>
         </section>
 

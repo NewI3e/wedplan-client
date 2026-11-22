@@ -130,12 +130,7 @@ export function SignInForm() {
             <label htmlFor="password" className="block text-sm font-medium">
               Password
             </label>
-            <Link
-              href={routes.forgotPassword}
-              className="text-xs text-[#2b2118]/55 underline-offset-2 hover:text-[#7a1f3d] hover:underline"
-            >
-              Forgot password?
-            </Link>
+
           </div>
           <div className="relative">
             <input

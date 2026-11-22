@@ -1,5 +1,4 @@
-
-import Link from "next/link";
+import Link from "next/link"
 import {
   ArrowLeft,
   Check,
@@ -7,30 +6,31 @@ import {
   LockKeyhole,
   ShieldCheck,
   Sparkles,
-} from "lucide-react";
+} from "lucide-react"
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 
-export default function PaymentPage() {
+export default async function PaymentPage({ searchParams }) {
+  const { canceled } = await searchParams
+
+  if (canceled) {
+    console.log(
+      "Order canceled -- continue to shop around and check out when you're ready."
+    )
+  }
   const features = [
     "Unlimited service listings",
     "Premium vendor profile badge",
     "Priority visibility in search results",
     "Featured promotional benefits",
     "Advanced booking management",
-  ];
+  ]
 
   return (
     <main className="min-h-screen bg-[#faf9f6] px-4 py-8 sm:px-6 lg:py-12">
       <div className="mx-auto max-w-6xl">
-
         {/* Header */}
         <div className="mb-10">
           <Link
@@ -58,15 +58,11 @@ export default function PaymentPage() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-
           {/* Left: Payment */}
           <div className="space-y-6">
-
             <Card className="rounded-2xl border shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg">
-                  Payment method
-                </CardTitle>
+                <CardTitle className="text-lg">Payment method</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   You will complete your payment securely through Stripe.
                 </p>
@@ -91,9 +87,7 @@ export default function PaymentPage() {
                 </div>
 
                 <div className="mt-6 space-y-3">
-                  <p className="text-sm font-semibold">
-                    What happens next?
-                  </p>
+                  <p className="text-sm font-semibold">What happens next?</p>
 
                   <div className="space-y-4">
                     {[
@@ -105,9 +99,7 @@ export default function PaymentPage() {
                         <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#f2dfb9]/60 text-xs font-semibold text-[#8b641f]">
                           {index + 1}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {step}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{step}</p>
                       </div>
                     ))}
                   </div>
@@ -123,8 +115,8 @@ export default function PaymentPage() {
                   Your payment is protected
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-emerald-800/80">
-                  Your payment details are handled by Stripe.
-                  WedPlan does not store your card information.
+                  Your payment details are handled by Stripe. WedPlan does not
+                  store your card information.
                 </p>
               </div>
             </div>
@@ -149,9 +141,7 @@ export default function PaymentPage() {
                   </div>
 
                   <div>
-                    <h2 className="text-xl font-bold">
-                      WedPlan Premium
-                    </h2>
+                    <h2 className="text-xl font-bold">WedPlan Premium</h2>
                     <p className="text-sm text-white/60">
                       For growing wedding vendors
                     </p>
@@ -159,34 +149,25 @@ export default function PaymentPage() {
                 </div>
 
                 <div className="mt-7 flex items-end gap-2">
-                  <span className="text-4xl font-bold">$9.99</span>
-                  <span className="pb-1 text-sm text-white/60">
-                    / month
-                  </span>
+                  <span className="text-4xl font-bold">$20.00</span>
+                  <span className="pb-1 text-sm text-white/60">/ month</span>
                 </div>
               </div>
 
               <CardContent className="p-6">
                 <div className="mb-5 flex items-center gap-2">
                   <Sparkles className="size-4 text-[#b58a3c]" />
-                  <h3 className="text-sm font-semibold">
-                    Premium benefits
-                  </h3>
+                  <h3 className="text-sm font-semibold">Premium benefits</h3>
                 </div>
 
                 <div className="space-y-4">
                   {features.map((feature) => (
-                    <div
-                      key={feature}
-                      className="flex items-start gap-3"
-                    >
+                    <div key={feature} className="flex items-start gap-3">
                       <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
                         <Check className="size-3 text-emerald-700" />
                       </div>
 
-                      <p className="text-sm text-muted-foreground">
-                        {feature}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{feature}</p>
                     </div>
                   ))}
                 </div>
@@ -195,16 +176,12 @@ export default function PaymentPage() {
 
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      Subtotal
-                    </span>
-                    <span className="font-medium">$9.99</span>
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-medium">$20.00</span>
                   </div>
 
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      Tax
-                    </span>
+                    <span className="text-muted-foreground">Tax</span>
                     <span className="font-medium">Calculated at checkout</span>
                   </div>
                 </div>
@@ -213,11 +190,11 @@ export default function PaymentPage() {
 
                 <div className="mb-6 flex items-center justify-between">
                   <span className="font-semibold">Total per month</span>
-                  <span className="text-2xl font-bold">$9.99</span>
+                  <span className="text-2xl font-bold">$20.00</span>
                 </div>
 
                 {/* Stripe Checkout */}
-                <form action="/api/stripe/checkout" method="POST">
+                <form action="/api/checkout_sessions" method="POST">
                   <Button
                     type="submit"
                     className="h-12 w-full rounded-full bg-[#d8b875] font-semibold text-[#3d2c10] hover:bg-[#cba65d]"
@@ -227,8 +204,8 @@ export default function PaymentPage() {
                 </form>
 
                 <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
-                  By continuing, you agree to our Terms of Service
-                  and Subscription Policy.
+                  By continuing, you agree to our Terms of Service and
+                  Subscription Policy.
                 </p>
               </CardContent>
             </Card>
@@ -241,5 +218,5 @@ export default function PaymentPage() {
         </div>
       </div>
     </main>
-  );
+  )
 }
