@@ -7,6 +7,13 @@ const client = new MongoClient(process.env.DB_URI as string)
 const db = client.db("wedplandb")
 
 export const auth = betterAuth({
+  trustedOrigins: [
+    "http://localhost:3000",
+    "https://wedplan-client-49g3hkfaz-404-5d46.vercel.app",
+    "https://wedplan-client-theta-khaki.vercel.app/"
+  ],
+
+
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
