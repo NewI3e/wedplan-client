@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth"
-import { MongoClient } from "mongodb"
+import { APIError } from "better-auth/api"
+import { MongoClient, ObjectId } from "mongodb"
 import { mongodbAdapter } from "@better-auth/mongo-adapter"
 
 const client = new MongoClient(process.env.DB_URI as string)
@@ -11,6 +12,10 @@ export const auth = betterAuth({
     minPasswordLength: 6,
   },
   user: {
+    changeEmail: {
+      enabled: true,
+      updateEmailWithoutVerification: true,
+    },
     additionalFields: {
       role: {
         type: "string",
@@ -39,6 +44,27 @@ export const auth = betterAuth({
           const data: Record<string, unknown> = { ...user }
           delete data.role
           return { data }
+        },
+      },
+    },
+    session: {
+      create: {
+        before: async (session) => {
+          if (!ObjectId.isValid(session.userId)) return
+
+          const user = await db
+            .collection("user")
+            .findOne(
+              { _id: new ObjectId(session.userId) },
+              { projection: { blocked: 1 } }
+            )
+
+          if (user?.blocked === true) {
+            throw new APIError("FORBIDDEN", {
+              message:
+                "This account has been blocked. Please contact WedPlan support.",
+            })
+          }
         },
       },
     },

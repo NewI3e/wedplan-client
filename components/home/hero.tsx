@@ -2,9 +2,14 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowRightIcon, SearchIcon, SparkleIcon } from "lucide-react"
 
+import { dashboardPaths } from "@/lib/dashboard"
 import { routes } from "@/lib/routes"
 
-export function Hero() {
+export function Hero({ isVendor = false }: { isVendor?: boolean }) {
+  const listBusinessHref = isVendor
+    ? dashboardPaths.vendor.overview
+    : routes.signUp
+
   return (
     <section
       aria-labelledby="hero-heading"
@@ -90,7 +95,7 @@ export function Hero() {
               />
             </Link>
             <Link
-              href={routes.listBusiness}
+              href={listBusinessHref}
               className="inline-flex h-12 items-center justify-center rounded-full border border-white/45 px-7 text-sm font-medium text-white/90 backdrop-blur-sm transition-[background-color,border-color,transform] hover:border-white/70 hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none motion-safe:hover:-translate-y-0.5"
             >
               List your business
