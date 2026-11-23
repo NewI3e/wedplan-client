@@ -172,12 +172,15 @@ export function SignUpForm() {
       await signIn.social({
         provider: "google",
         callbackURL: routes.dashboard,
+        newUserCallbackURL: `/api/set-role?role=${role}`,
       })
     } catch {
       setError("Google sign-up is unavailable right now.")
       setIsGoogleLoading(false)
     }
   }
+
+
 
   return (
     <div>

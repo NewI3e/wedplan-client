@@ -175,6 +175,24 @@
     min-height: 100svh;
 }
 
+/*
+ * On small screens the sidebar is rendered through a Sheet portal, which
+ * lives outside .dashboard-shell. Without this it inherits the dark tokens
+ * while its labels stay dark (#2b2118), making the mobile menu unreadable
+ * whenever the system theme is dark.
+ */
+.dark .dashboard-shell,
+.dark [data-slot="sidebar"] {
+    --sidebar: #f7f2e9;
+    --sidebar-foreground: #2b2118;
+    --sidebar-primary: #7a1f3d;
+    --sidebar-primary-foreground: #f8f2e7;
+    --sidebar-accent: #efe6d6;
+    --sidebar-accent-foreground: #2b2118;
+    --sidebar-border: #e8decd;
+    --sidebar-ring: #7a1f3d;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

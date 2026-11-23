@@ -1,10 +1,6 @@
 import { MongoClient, type Binary } from "mongodb"
 
-/**
- * Uploaded images (profile photos and service photos) are stored in MongoDB
- * and streamed back through /api/profile-photo/[id] or /api/service-photo/[id].
- * That keeps uploads working without an external storage provider.
- */
+
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 

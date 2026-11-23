@@ -5,7 +5,7 @@ import { CirclePlayIcon } from "lucide-react"
 import { routes } from "@/lib/routes"
 
 type AuthShellProps = {
-  /** Photo shown in the left panel on large screens. */
+ 
   imageSrc: string
   imageAlt: string
   /** Quote shown over the photo. */
